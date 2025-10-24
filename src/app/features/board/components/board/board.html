@@ -1,0 +1,65 @@
+<mat-toolbar class="header" role="navigation">
+  <div class="toolbar-title-container">
+    <mat-icon matListItemIcon>view_kanban</mat-icon>
+    <a matButton class="toolbar-title" (click)="goHome()">EpiTrello</a>
+  </div>
+  <div class="toolbar-profile-container">
+    <button matButton class="toolbar-profile">
+      <mat-icon>account_circle</mat-icon>
+    </button>
+  </div>
+</mat-toolbar>
+
+<div class="board-container" [style.background]="(currentBoard$ | async)?.backgroundGradiant">
+  
+  @if (currentBoard$ | async; as currentBoard) {
+    <div class="board-content">
+      @if (lists$ | async; as lists) {
+        <div class="lists-container" cdkDropList cdkDropListOrientation="horizontal" (cdkDropListDropped)="onListDrop($event)" [cdkDropListData]="lists">
+          @for (list of lists; track list.id) {
+            <app-list 
+              [list]="list" 
+              cdkDrag
+              class="list-item">
+            </app-list>
+          }
+          
+
+            @if (!showNewListForm) {
+              <div class="add-list-container">
+                <div mat-button (click)="showNewListForm = true" class="add-list-button">
+                  <mat-icon>add</mat-icon> Add another list
+                </div>
+              </div>
+            } @else {
+              <div class="add-list-container-expanded">
+                <div class="new-list-form">
+                  <mat-form-field appearance="outline">
+                    <mat-label>List title</mat-label>
+                    <input matInput [(ngModel)]="newListTitle" placeholder="Enter list title" required (keyup.enter)="createList()">
+                  </mat-form-field>
+                  <div class="form-actions">
+                    <button mat-raised-button color="primary" (click)="createList()" [disabled]="!newListTitle">Add List</button>
+                    <button mat-icon-button (click)="showNewListForm = false">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            }
+
+        </div>
+      }
+    </div>
+  }
+  
+  @if (!(currentBoard$ | async) && ((boards$ | async)?.length === 0)) {
+    <div class="empty-state">
+      <h2>Welcome to EpiTrello!</h2>
+      <p>Create your first board to get started.</p>
+      <button mat-raised-button color="primary" (click)="showNewBoardForm = true">
+        <mat-icon>add</mat-icon> Create Board
+      </button>
+    </div>
+  }
+</div>

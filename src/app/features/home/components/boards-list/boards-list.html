@@ -1,0 +1,27 @@
+<div class="boards-container">
+  <div class="boards-header">
+    <mat-icon class="boards-header-icon">folder</mat-icon>
+    <div class="boards-header-title">Your boards</div>
+  </div>
+
+  @if ((boards$ | async)?.length === 0) {
+    <div class="no-boards">
+      <p>You don't have any boards yet. Create your first board to get started!</p>
+    </div>
+  } @else {
+    <div class="boards-grid">
+      <mat-grid-list cols="3" rowHeight="5:3">
+        @for (board of (boards$ | async); track board.id) {
+          <mat-grid-tile>
+            <mat-card class="board-card" (click)="openBoard(board.id)">
+              <div class="card-bg" [style.background]="board.backgroundGradiant"></div>
+              <div class="card-footer">
+                <div class="card-title">{{ board.title }}</div>
+              </div>
+            </mat-card>
+          </mat-grid-tile>
+        }
+      </mat-grid-list>
+    </div>
+  }
+</div>
