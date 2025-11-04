@@ -2,6 +2,7 @@ import express from 'express';
 import { config } from 'dotenv';
 import connectDB from './config/db';
 import authRoutes from './routes/auth.routes';
+import projectRoutes from './routes/project.routes';
 import { errorMiddleware } from './middlewares/error.middleware';
 
 config();
@@ -18,6 +19,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/projects', projectRoutes);
 
 // Error handling middleware
 app.use(errorMiddleware);

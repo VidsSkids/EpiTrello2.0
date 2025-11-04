@@ -1,14 +1,16 @@
 openapi: 3.0.1
 info:
-  title: EpiTrello2.0 - Auth API
-  version: "1.0.1"
-  description: Authentication endpoints for EpiTrello2.0 (register, login, delete account, ping)
+  title: EpiTrello2.0 - Auth & Projects API
+  version: "1.1.0"
+  description: Authentication and Project endpoints for EpiTrello2.0
 servers:
   - url: http://localhost:5000
     description: Local dev server
 tags:
   - name: auth
     description: Authentication operations
+  - name: projects
+    description: Project management operations
 paths:
   /api/auth/register:
     post:
@@ -23,23 +25,6 @@ paths:
       responses:
         "201":
           description: User registered
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RegisterResponse'
-        "400":
-          description: Bad Request (validation)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        "409":
-          description: Conflict (name already taken)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
   /api/auth/login:
     post:
       tags: [auth]
@@ -58,24 +43,10 @@ paths:
               description: Bearer token header (also returned in response body)
               schema:
                 type: string
-                example: "Bearer <jwt>"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResponse'
-        "400":
-          description: Bad Request (validation)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        "401":
-          description: Unauthorized (invalid credentials)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
   /api/auth/ping:
     get:
       tags: [auth]
@@ -85,6 +56,64 @@ paths:
       responses:
         "200":
           description: Pong with authenticated user info
+  /api/projects:
+    get:
+      tags: [projects]
+      summary: Get all projects for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Project'
+    post:
+      tags: [projects]
+      summary: Create a new project (authenticated)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        "201":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateProjectResponse'
+  /api/projects/{id}:
+    get:
+      tags: [projects]
+      summary: Get project details
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      responses:
+        "200":
+          description: Project object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+    delete:
+      tags: [projects]
+      summary: Delete a project (Owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      responses:
+        "200":
+          description: Project deleted
           content:
             application/json:
               schema:
@@ -92,57 +121,200 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: pong
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        format: uuid
-                      name:
-                        type: string
-        "401":
-          description: Unauthorized (missing/invalid token)
+                  projectId:
+                    type: string
+        "403":
+          description: Forbidden
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
-  /api/auth/{id}:
-    delete:
-      tags: [auth]
-      summary: Delete a user account by id (uuid or mongo id)
+  /api/projects/{id}/invite:
+    post:
+      tags: [projects]
+      summary: Invite a user by name to a project (requires invite permission)
       security:
         - bearerAuth: []
       parameters:
-        - name: id
+        - $ref: '#/components/parameters/projectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteRequest'
+      responses:
+        "200":
+          description: Invitation sent
+  /api/projects/{id}/accept:
+    post:
+      tags: [projects]
+      summary: Accept an invitation to join the project (authenticated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      responses:
+        "200":
+          description: Invitation accepted
+  /api/projects/{id}/decline:
+    post:
+      tags: [projects]
+      summary: Decline an invitation to join the project (authenticated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      responses:
+        "200":
+          description: Invitation declined
+  /api/projects/{id}/revokeInvitation:
+    post:
+      tags: [projects]
+      summary: Revoke an invitation sent to a user (Owner/Administrator only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteRequest'
+      responses:
+        "200":
+          description: Invitation revoked
+  /api/projects/{id}/remove/{memberId}:
+    post:
+      tags: [projects]
+      summary: Remove a member from the project (Owner/Administrator only). A user cannot remove themselves; they must leave the project. Administrators cannot remove Owners and other Administrators.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - name: memberId
           in: path
           required: true
           schema:
             type: string
-          description: UUID or Mongo _id of the user to delete
+          description: member public id (uuid or mongo _id)
       responses:
-        "204":
-          description: Deleted successfully (no content)
-        "401":
-          description: Unauthorized (missing/invalid token)
+        "200":
+          description: Member removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "403":
+          description: Forbidden
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        "404":
-          description: Not Found (user does not exist)
+  /api/projects/{id}/leave:
+    post:
+      tags: [projects]
+      summary: Leave the project (authenticated user). The owner cannot leave the project. They must delete the project.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      responses:
+        "200":
+          description: Left the project
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "403":
+          description: Forbidden
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
+  /api/projects/{id}/members/{memberId}/role:
+    patch:
+      tags: [projects]
+      summary: Change a member role (Owner/Administrator only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: member public id (uuid or mongo _id)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeRoleRequest'
+      responses:
+        "200":
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/projects/invitations:
+    get:
+      tags: [projects]
+      summary: Get all project invitations for the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of project invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    projectId:
+                      type: string
+                    projectName:
+                      type: string
+                    invitedBy:
+                      type: string
+                    createdAt:
+                      type: string
+                      format: date-time
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  parameters:
+    projectId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Project uuid or mongo _id
 
   schemas:
     RegisterRequest:
@@ -151,64 +323,103 @@ components:
       properties:
         name:
           type: string
-          example: alice
         password:
           type: string
-          format: password
-          example: secret123
-
-    RegisterResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          example: User registered successfully
-        user:
-          $ref: '#/components/schemas/UserPublic'
-
     LoginRequest:
       type: object
       required: [name, password]
       properties:
         name:
           type: string
-          example: alice
         password:
           type: string
-          format: password
-          example: secret123
-
     LoginResponse:
       type: object
       properties:
         message:
           type: string
-          example: Login successful
         token:
           type: string
-          description: JWT token to use in Authorization: Bearer <token>
         id:
           type: string
-          description: Public id (uuid or mongo _id) of the authenticated user
-
-    UserPublic:
+    CreateProjectRequest:
       type: object
+      required: [name]
       properties:
-        id:
-          type: string
-          description: Public unique id (uuid or mongo _id)
         name:
           type: string
+    CreateProjectResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        project:
+          $ref: '#/components/schemas/Project'
+    Project:
+      type: object
+      properties:
+        uuid:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        ownerId:
+          type: string
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectMember'
+        invitations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invitation'
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
-
+    ProjectMember:
+      type: object
+      properties:
+        userId:
+          type: string
+        role:
+          type: string
+          enum:
+            - Reader
+            - Contributer
+            - Administrator
+            - Owner
+    Invitation:
+      type: object
+      properties:
+        name:
+          type: string
+        invitedBy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    InviteRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+    ChangeRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum:
+            - Reader
+            - Contributer
+            - Administrator
     ErrorResponse:
       type: object
       properties:
         message:
           type: string
-          example: Error message
