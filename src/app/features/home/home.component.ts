@@ -8,15 +8,15 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
-import { BoardService } from '../board/services/board-service';
+import { BoardService } from '../board/services/board.service';
 import { Board } from '../board/models/board';
-import { CreateBoardDialogComponent } from './create-board-dialog.component';
+import { CreateBoardDialogComponent } from './components/create-board-dialog/create-board-dialog.component';
 import { Observable } from 'rxjs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
 import { RouterOutlet } from '@angular/router';
-import { CreateBoardPanelComponent } from './components/create-board-panel/create-board-panel';
+import { CreateBoardPanelComponent } from './components/create-board-panel/create-board-panel.component';
 
 @Component({
   selector: 'app-home',
