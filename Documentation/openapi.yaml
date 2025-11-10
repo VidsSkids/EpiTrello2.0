@@ -11,6 +11,8 @@ tags:
     description: Authentication operations
   - name: projects
     description: Project management operations
+  - name: columns
+    description: Column management operations
 paths:
   /api/auth/register:
     post:
@@ -300,6 +302,145 @@ paths:
                     createdAt:
                       type: string
                       format: date-time
+
+  /api/projects/{id}/columns:
+    post:
+      tags: [columns]
+      summary: Create a new column in the project
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Column created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  columnId:
+                    type: string
+                  columnName:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+  /api/projects/{id}/columns/{columnId}:
+    delete:
+      tags: [columns]
+      summary: Delete a column from the project
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - name: columnId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Column ID
+      responses:
+        "200":
+          description: Column deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [columns]
+      summary: Update a column's name in the project
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - name: columnId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Column ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Column updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  columnId:
+                    type: string
+                  columnName:
+                    type: string
+                  updatedAt:
+                    type: string
+                    format: date-time
+
+  /api/projects/{id}/columns/{columnId}/reorder:
+    patch:
+      tags: [columns]
+      summary: Reorder a column in the project
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - name: columnId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Column ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                newIndex:
+                  type: integer
+      responses:
+        "200":
+          description: Column reordered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
 components:
   securitySchemes:
     bearerAuth:

@@ -3,6 +3,8 @@ import ProjectController from '../controllers/project.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { validateCreateProject, validateInvite, validateChangeRole } from '../validators/project.validator';
 
+import ColumnRouter from './column.routes';
+
 const router = express.Router();
 
 router.post('/', authMiddleware, validateCreateProject, (req, res, next) => ProjectController.create(req, res, next));
@@ -18,5 +20,7 @@ router.post('/:id/revokeInvitation', authMiddleware, (req, res, next) => Project
 router.post('/:id/remove/:memberId', authMiddleware, (req, res, next) => ProjectController.removeMember(req, res, next));
 router.post('/:id/leave', authMiddleware, (req, res, next) => ProjectController.leaveProject(req, res, next));
 router.patch('/:id/members/:memberId/role', authMiddleware, validateChangeRole, (req, res, next) => ProjectController.changeRole(req, res, next));
+
+router.use('/:projectId/columns', ColumnRouter);
 
 export default router;
