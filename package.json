@@ -1,7 +1,7 @@
 {
   "name": "express-mongo-auth",
   "version": "1.0.0",
-  "description": "A simple authentication system using Express.js and MongoDB.",
+  "description": "A trello backend system using Express.js and MongoDB.",
   "main": "src/server.ts",
   "scripts": {
     "start": "ts-node src/server.ts",
