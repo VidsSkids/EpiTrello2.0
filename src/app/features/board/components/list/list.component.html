@@ -24,6 +24,7 @@
   <div 
     class="cards-container"
     cdkDropList
+    cdkDropListOrientation="vertical"
     [cdkDropListData]="cards"
     (cdkDropListDropped)="onCardDrop($event)">
     @for (card of cards; track card.id) {

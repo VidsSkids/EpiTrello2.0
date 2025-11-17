@@ -10,18 +10,8 @@
 
     <form (ngSubmit)="submit()">
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Prénom</mat-label>
-        <input matInput [(ngModel)]="firstName" name="firstName" required />
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="full-width">
         <mat-label>Nom</mat-label>
-        <input matInput [(ngModel)]="lastName" name="lastName" required />
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Email</mat-label>
-        <input matInput type="email" [(ngModel)]="email" name="email" required />
+        <input matInput [(ngModel)]="name" name="lastName" required />
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">

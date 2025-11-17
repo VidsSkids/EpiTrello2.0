@@ -28,9 +28,7 @@ import { RouterLink } from '@angular/router';
   styleUrl: './register.component.css'
 })
 export class RegisterComponent {
-  firstName = '';
-  lastName = '';
-  email = '';
+  name = '';
   password = '';
   loading = false;
   error: string | null = null;
@@ -40,9 +38,7 @@ export class RegisterComponent {
   submit(): void {
     this.error = null;
     const payload: RegisterRequest = {
-      firstName: this.firstName,
-      lastName: this.lastName,
-      email: this.email,
+      name: this.name,
       password: this.password
     };
     this.loading = true;

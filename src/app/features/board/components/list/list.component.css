@@ -97,6 +97,7 @@ mat-form-field {
 }
 
 .cdk-drag-placeholder {
+  background: #000 !important;
   opacity: 0;
 }
 

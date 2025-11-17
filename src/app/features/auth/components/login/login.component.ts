@@ -28,7 +28,7 @@ import { RouterLink } from '@angular/router';
   styleUrl: './login.component.css'
 })
 export class LoginComponent {
-  email = '';
+  name = '';
   password = '';
   loading = false;
   error: string | null = null;
@@ -37,7 +37,7 @@ export class LoginComponent {
 
   submit(): void {
     this.error = null;
-    const payload: LoginRequest = { email: this.email, password: this.password };
+    const payload: LoginRequest = { name: this.name, password: this.password };
     this.loading = true;
     this.auth.login(payload).subscribe({
       next: () => {
