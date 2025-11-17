@@ -1,0 +1,30 @@
+<div class="login-container">
+  <img class="illu illu-left" src="assets/images/illustrations/illu_register_1.svg" alt="" aria-hidden="true" />
+  <img class="illu illu-right" src="assets/images/illustrations/illu_register_2.svg" alt="" aria-hidden="true" />
+  <mat-card>
+    <div class="brand-title-container">
+      <mat-icon matListItemIcon>view_kanban</mat-icon>
+      <h2 matButton class="brant-name">EpiTrello</h2>
+    </div>
+    <h3 style="text-align: center;">Connectez-vous pour continuer</h3>
+
+    <form (ngSubmit)="submit()">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Nom</mat-label>
+        <input matInput [(ngModel)]="name" name="name" required />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Mot de passe</mat-label>
+        <input matInput type="password" [(ngModel)]="password" name="password" required />
+      </mat-form-field>
+
+      <button mat-flat-button color="primary" [disabled]="loading" type="submit">Se connecter</button>
+      <span class="error" *ngIf="error">{{ error }}</span>
+    </form>
+
+    <div class="links">
+      <a routerLink="/register">Créer un compte</a>
+    </div>
+  </mat-card>
+</div>
