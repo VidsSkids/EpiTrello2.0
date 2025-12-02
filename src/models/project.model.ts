@@ -1,4 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { ProjectColumnModel, IProjectColumn } from './column.model';
+import { IProjectTag, ProjectTagModel } from './tag.model';
 
 export type ProjectRole = 'Reader' | 'Contributer' | 'Administrator' | 'Owner';
 
@@ -13,12 +15,6 @@ export interface IProjectInvitation {
   createdAt: Date;
 }
 
-export interface IProjectColumn {
-  _id: mongoose.Types.ObjectId;
-  name: string;
-  createdAt: Date;
-}
-
 export interface IProject extends Document {
   uuid: string;
   name: string;
@@ -28,6 +24,7 @@ export interface IProject extends Document {
   createdAt?: Date;
   updatedAt?: Date;
   columns: IProjectColumn[];
+  tags?: IProjectTag[];
 }
 
 const MemberSchema = new Schema<IProjectMember>({
@@ -41,18 +38,14 @@ const InvitationSchema = new Schema<IProjectInvitation>({
   createdAt: { type: Date, default: Date.now },
 }, { _id: false });
 
-const ColumnSchema = new Schema<IProjectInvitation>({
-  name: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-}, { _id: true });
-
 const ProjectSchema = new Schema<IProject>({
   uuid: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   ownerId: { type: String, required: true },
   members: { type: [MemberSchema], default: [] },
   invitations: { type: [InvitationSchema], default: [] },
-  columns: { type: [ColumnSchema], default: [] },
+  columns: { type: [ProjectColumnModel.schema], default: [] },
+  tags: { type: [ProjectTagModel.schema], default: [] },
 }, { timestamps: true });
 
 export default mongoose.model<IProject>('Project', ProjectSchema);

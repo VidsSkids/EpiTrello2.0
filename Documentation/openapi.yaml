@@ -1,8 +1,8 @@
 openapi: 3.0.1
 info:
-  title: EpiTrello2.0 - Auth & Projects API
-  version: "1.1.0"
-  description: Authentication and Project endpoints for EpiTrello2.0
+  title: EpiTrello2.0 - Full API
+  version: "1.2.0"
+  description: Authentication, Projects, Columns, Cards and Checklists API for EpiTrello2.0
 servers:
   - url: http://localhost:5000
     description: Local dev server
@@ -13,6 +13,10 @@ tags:
     description: Project management operations
   - name: columns
     description: Column management operations
+  - name: cards
+    description: Card management operations
+  - name: checklists
+    description: Checklist operations
 paths:
   /api/auth/register:
     post:
@@ -25,12 +29,12 @@ paths:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
-        "201":
-          description: User registered
+        '201':
+          description: Created
   /api/auth/login:
     post:
       tags: [auth]
-      summary: Login and receive JWT (token returned in body and also set as Authorization response header)
+      summary: Login
       requestBody:
         required: true
         content:
@@ -38,44 +42,25 @@ paths:
             schema:
               $ref: '#/components/schemas/LoginRequest'
       responses:
-        "200":
+        '200':
           description: Login successful
           headers:
             Authorization:
-              description: Bearer token header (also returned in response body)
               schema:
                 type: string
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoginResponse'
   /api/auth/ping:
     get:
       tags: [auth]
-      summary: Protected ping endpoint, requires Bearer token
+      summary: Protected ping
       security:
         - bearerAuth: []
       responses:
-        "200":
-          description: Pong with authenticated user info
+        '200':
+          description: Pong
   /api/projects:
-    get:
-      tags: [projects]
-      summary: Get all projects for the authenticated user
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: List of projects
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Project'
     post:
       tags: [projects]
-      summary: Create a new project (authenticated)
+      summary: Create project
       security:
         - bearerAuth: []
       requestBody:
@@ -85,13 +70,17 @@ paths:
             schema:
               $ref: '#/components/schemas/CreateProjectRequest'
       responses:
-        "201":
+        '201':
           description: Project created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CreateProjectResponse'
-  /api/projects/{id}:
+    get:
+      tags: [projects]
+      summary: List projects for authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: list
+  /api/projects/{projectId}:
     get:
       tags: [projects]
       summary: Get project details
@@ -100,41 +89,22 @@ paths:
       parameters:
         - $ref: '#/components/parameters/projectId'
       responses:
-        "200":
+        '200':
           description: Project object
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Project'
     delete:
       tags: [projects]
-      summary: Delete a project (Owner only)
+      summary: Delete project (owner only)
       security:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/projectId'
       responses:
-        "200":
-          description: Project deleted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  projectId:
-                    type: string
-        "403":
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/projects/{id}/invite:
+        '200':
+          description: Deleted
+  /api/projects/{projectId}/invite:
     post:
       tags: [projects]
-      summary: Invite a user by name to a project (requires invite permission)
+      summary: Invite user by name
       security:
         - bearerAuth: []
       parameters:
@@ -146,34 +116,34 @@ paths:
             schema:
               $ref: '#/components/schemas/InviteRequest'
       responses:
-        "200":
+        '200':
           description: Invitation sent
-  /api/projects/{id}/accept:
+  /api/projects/{projectId}/accept:
     post:
       tags: [projects]
-      summary: Accept an invitation to join the project (authenticated)
+      summary: Accept invitation (authenticated)
       security:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/projectId'
       responses:
-        "200":
+        '200':
           description: Invitation accepted
-  /api/projects/{id}/decline:
+  /api/projects/{projectId}/decline:
     post:
       tags: [projects]
-      summary: Decline an invitation to join the project (authenticated)
+      summary: Decline invitation
       security:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/projectId'
       responses:
-        "200":
+        '200':
           description: Invitation declined
-  /api/projects/{id}/revokeInvitation:
+  /api/projects/{projectId}/revokeInvitation:
     post:
       tags: [projects]
-      summary: Revoke an invitation sent to a user (Owner/Administrator only)
+      summary: Owner revoke sent invitation
       security:
         - bearerAuth: []
       parameters:
@@ -185,12 +155,12 @@ paths:
             schema:
               $ref: '#/components/schemas/InviteRequest'
       responses:
-        "200":
+        '200':
           description: Invitation revoked
-  /api/projects/{id}/remove/{memberId}:
+  /api/projects/{projectId}/remove/{memberId}:
     post:
       tags: [projects]
-      summary: Remove a member from the project (Owner/Administrator only). A user cannot remove themselves; they must leave the project. Administrators cannot remove Owners and other Administrators.
+      summary: Remove a member from project
       security:
         - bearerAuth: []
       parameters:
@@ -200,51 +170,13 @@ paths:
           required: true
           schema:
             type: string
-          description: member public id (uuid or mongo _id)
       responses:
-        "200":
+        '200':
           description: Member removed
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-        "403":
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/projects/{id}/leave:
-    post:
-      tags: [projects]
-      summary: Leave the project (authenticated user). The owner cannot leave the project. They must delete the project.
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/projectId'
-      responses:
-        "200":
-          description: Left the project
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-        "403":
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/projects/{id}/members/{memberId}/role:
+  /api/projects/{projectId}/members/{memberId}/role:
     patch:
       tags: [projects]
-      summary: Change a member role (Owner/Administrator only)
+      summary: Change a member role
       security:
         - bearerAuth: []
       parameters:
@@ -254,7 +186,6 @@ paths:
           required: true
           schema:
             type: string
-          description: member public id (uuid or mongo _id)
       requestBody:
         required: true
         content:
@@ -262,51 +193,12 @@ paths:
             schema:
               $ref: '#/components/schemas/ChangeRoleRequest'
       responses:
-        "200":
+        '200':
           description: Role updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-        "403":
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-  /api/projects/invitations:
-    get:
-      tags: [projects]
-      summary: Get all project invitations for the authenticated user
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: List of project invitations
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    projectId:
-                      type: string
-                    projectName:
-                      type: string
-                    invitedBy:
-                      type: string
-                    createdAt:
-                      type: string
-                      format: date-time
-
-  /api/projects/{id}/columns:
+  /api/projects/{projectId}/columns:
     post:
       tags: [columns]
-      summary: Create a new column in the project
+      summary: Create column in project
       security:
         - bearerAuth: []
       parameters:
@@ -316,13 +208,38 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                name:
-                  type: string
+              $ref: '#/components/schemas/CreateColumnRequest'
       responses:
-        "201":
+        '201':
           description: Column created
+    get:
+      tags: [columns]
+      summary: List columns for project
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      responses:
+        '200':
+          description: list
+  /api/projects/{projectId}/columns/{columnId}/cards:
+    post:
+      tags: [cards]
+      summary: Create card in a column
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - $ref: '#/components/parameters/columnId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCardRequest'
+      responses:
+        '201':
+          description: Card created
           content:
             application/json:
               schema:
@@ -330,68 +247,66 @@ paths:
                 properties:
                   message:
                     type: string
-                  columnId:
+                  newCard:
+                    $ref: '#/components/schemas/Card'
+  /api/projects/{projectId}/columns/{columnId}/cards/{cardId}:
+    patch:
+      tags: [cards]
+      summary: Update card
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - $ref: '#/components/parameters/columnId'
+        - $ref: '#/components/parameters/cardId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCardRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
                     type: string
-                  columnName:
-                    type: string
-                  createdAt:
-                    type: string
-                    format: date-time
-  /api/projects/{id}/columns/{columnId}:
+                  updatedCard:
+                    $ref: '#/components/schemas/Card'
     delete:
-      tags: [columns]
-      summary: Delete a column from the project
+      tags: [cards]
+      summary: Delete card
       security:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/projectId'
-        - name: columnId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Column ID
+        - $ref: '#/components/parameters/columnId'
+        - $ref: '#/components/parameters/cardId'
       responses:
-        "200":
-          description: Column deleted
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-        "403":
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    patch:
-      tags: [columns]
-      summary: Update a column's name in the project
+        '204':
+          description: Deleted
+  /api/projects/{projectId}/columns/{columnId}/cards/{cardId}/checklists:
+    post:
+      tags: [checklists]
+      summary: Create checklist on card
       security:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/projectId'
-        - name: columnId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Column ID
+        - $ref: '#/components/parameters/columnId'
+        - $ref: '#/components/parameters/cardId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                name:
-                  type: string
+              $ref: '#/components/schemas/CreateChecklistRequest'
       responses:
-        "200":
-          description: Column updated
+        '201':
+          description: Checklist created
           content:
             application/json:
               schema:
@@ -399,40 +314,72 @@ paths:
                 properties:
                   message:
                     type: string
-                  columnId:
+                  newChecklist:
+                    $ref: '#/components/schemas/Checklist'
+  /api/projects/{projectId}/columns/{columnId}/cards/{cardId}/checklists/{checklistId}:
+    patch:
+      tags:
+        - checklists
+      summary: Update checklist
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - $ref: '#/components/parameters/columnId'
+        - $ref: '#/components/parameters/cardId'
+        - $ref: '#/components/parameters/checklistId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChecklistRequest'
+      responses:
+        '200':
+          description: Checklist updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
                     type: string
-                  columnName:
-                    type: string
-                  updatedAt:
-                    type: string
-                    format: date-time
+                  updatedChecklist:
+                    $ref: '#/components/schemas/Checklist'
+    delete:
+      tags: [checklists]
+      summary: Delete checklist
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - $ref: '#/components/parameters/columnId'
+        - $ref: '#/components/parameters/cardId'
+        - $ref: '#/components/parameters/checklistId'
+      responses:
+        '204':
+          description: Deleted
 
-  /api/projects/{id}/columns/{columnId}/reorder:
-    patch:
-      tags: [columns]
-      summary: Reorder a column in the project
+  /api/projects/{projectId}/columns/{columnId}/cards/{cardId}/checklists/{checklistId}/items:
+    post:
+      tags: [checklists]
+      summary: Add item to checklist
       security:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/projectId'
-        - name: columnId
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Column ID
+        - $ref: '#/components/parameters/columnId'
+        - $ref: '#/components/parameters/cardId'
+        - $ref: '#/components/parameters/checklistId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                newIndex:
-                  type: integer
+              $ref: '#/components/schemas/AddChecklistItemRequest'
       responses:
-        "200":
-          description: Column reordered
+        '201':
+          description: Item added
           content:
             application/json:
               schema:
@@ -440,6 +387,51 @@ paths:
                 properties:
                   message:
                     type: string
+                  newItem:
+                    $ref: '#/components/schemas/ChecklistItem'
+  /api/projects/{projectId}/columns/{columnId}/cards/{cardId}/checklists/{checklistId}/items/{itemId}:
+    patch:
+      tags: [checklists]
+      summary: Update checklist item (e.g., toggle checked status, change content etc.)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - $ref: '#/components/parameters/columnId'
+        - $ref: '#/components/parameters/cardId'
+        - $ref: '#/components/parameters/checklistId'
+        - $ref: '#/components/parameters/itemId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateChecklistItemRequest'
+      responses:
+        '200':
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  updatedItem:
+                    $ref: '#/components/schemas/ChecklistItem'
+    delete:
+      tags: [checklists]
+      summary: Remove checklist item
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - $ref: '#/components/parameters/columnId'
+        - $ref: '#/components/parameters/cardId'
+        - $ref: '#/components/parameters/checklistId'
+        - $ref: '#/components/parameters/itemId'
+      responses:
+        '204':
+          description: Item removed
 
 components:
   securitySchemes:
@@ -450,12 +442,40 @@ components:
 
   parameters:
     projectId:
-      name: id
+      name: projectId
       in: path
       required: true
       schema:
         type: string
-      description: Project uuid or mongo _id
+      description: Project uuid
+    columnId:
+      name: columnId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Column mongo _id
+    cardId:
+      name: cardId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Card mongo _id
+    checklistId:
+      name: checklistId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Checklist mongo _id
+    itemId:
+      name: itemId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Checklist Item mongo _id
 
   schemas:
     RegisterRequest:
@@ -533,6 +553,61 @@ components:
             - Contributer
             - Administrator
             - Owner
+
+    Card:
+      type: object
+      properties:
+        _id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        isDone:
+          type: boolean
+        dueDate:
+          type: string
+          format: date-time
+        startDate:
+          type: string
+          format: date-time
+        tagIds:
+          type: array
+          items:
+            type: string
+          description: Array of tag IDs
+        assignedTo:
+          type: array
+          description: Array of user IDs
+          items:
+            type: string
+        checklists:
+          type: array
+          items:
+            $ref: '#/components/schemas/Checklist'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Checklist:
+      type: object
+      properties:
+        _id:
+          type: string
+        title:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChecklistItem'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
     Invitation:
       type: object
       properties:
@@ -541,6 +616,30 @@ components:
         invitedBy:
           type: string
         createdAt:
+          type: string
+          format: date-time
+    ChecklistItem:
+      type: object
+      properties:
+        _id:
+          type: string
+        text:
+          type: string
+        isChecked:
+          type: boolean
+        dueDate:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+        assignedTo:
+          type: array
+          description: Array of user IDs
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
           type: string
           format: date-time
     InviteRequest:
@@ -559,6 +658,70 @@ components:
             - Reader
             - Contributer
             - Administrator
+    CreateColumnRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+    CreateColumnResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        column:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+    CreateCardRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+    UpdateCardRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+    CreateChecklistRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+    UpdateChecklistRequest:
+      type: object
+      properties:
+        title:
+          type: string
+    AddChecklistItemRequest:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+    UpdateChecklistItemRequest:
+      type: object
+      properties:
+        isChecked:
+          type: boolean
+        content:
+          type: string
+        dueDate:
+          type: integer
+          format: int64
+          description: Unix timestamp in milliseconds
+        assignedTo:
+          type: array
+          description: Array of user IDs
+          items:
+            type: string
     ErrorResponse:
       type: object
       properties:

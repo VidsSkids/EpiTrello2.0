@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { Types } from 'mongoose';
 
 import UserModel from '../models/user.model';
-import { ConflictError } from '../errors';
+import { ConflictError, NotFoundError } from '../errors';
 
 type PlainUser = {
   uuid?: string;
@@ -84,5 +84,14 @@ export class UserService {
 
     const res = await UserModel.findOneAndDelete({ $or: or });
     if (!res) throw new Error('User not found');
+  }
+
+  async getUserById(id: string) {
+    const or: { [k: string]: unknown }[] = [{ uuid: id }];
+    if (Types.ObjectId.isValid(id)) or.push({ _id: id });
+
+    const user = await UserModel.findOne({ $or: or }).select('-password');
+    if (!user) throw new NotFoundError('User not found');
+    return user;
   }
 }
