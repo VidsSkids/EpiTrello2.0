@@ -1,8 +1,12 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
+import { BehaviorSubject, Observable, forkJoin } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Board } from '../models/board';
 import { List } from '../models/list';
 import { Card } from '../models/card';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { environment } from '@environments/environment.development';
+import { AuthService } from '@features/auth/services/auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -13,10 +17,14 @@ export class BoardService {
   private boardsSubject = new BehaviorSubject<Board[]>([]);
   private listsSubject = new BehaviorSubject<List[]>([]);
   private cardsSubject = new BehaviorSubject<Card[]>([]);
+  private invitationsReceivedSubject = new BehaviorSubject<any[]>([]);
+  private invitationsSentSubject = new BehaviorSubject<any[]>([]);
   
   boards$ = this.boardsSubject.asObservable();
   lists$ = this.listsSubject.asObservable();
   cards$ = this.cardsSubject.asObservable();
+  invitationsReceived$ = this.invitationsReceivedSubject.asObservable();
+  invitationsSent$ = this.invitationsSentSubject.asObservable();
 
   readonly gradients: string[] = [
     'linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%)',
@@ -31,6 +39,10 @@ export class BoardService {
     'linear-gradient(135deg, #b1ea4d 0%, #459522 100%)'
   ];
   
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = `${environment.apiURL}`;
+  private readonly auth = inject(AuthService);
+
   constructor() {
     this.loadFromLocalStorage();
   }
@@ -43,21 +55,133 @@ export class BoardService {
     return this.boardsSubject.value.find(board => board.id === id);
   }
 
-  createBoard(title: string, backgroundGradiant?: string): Board {
-    const newBoard: Board = {
-      id: this.generateId(),
-      title,
-      lists: [],
-      backgroundGradiant: backgroundGradiant ?? this.gradients[Math.floor(Math.random() * this.gradients.length)],
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    
-    const boards = [...this.boardsSubject.value, newBoard];
-    this.boardsSubject.next(boards);
-    this.saveToLocalStorage();
-    
-    return newBoard;
+  private getAuthOptions(): { headers?: HttpHeaders } {
+    const token = this.auth.getToken();
+    return token ? { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) } : {};
+  }
+
+  createBoardFromServer(title: string, backgroundGradiant?: string): Observable<Board> {
+    return this.http.post<any>(`${this.baseUrl}/projects`, { name: title }, this.getAuthOptions()).pipe(
+      map((res: any) => {
+        const p = res?.project || {};
+        console.log(p);
+        const id = p.id || p.uuid;
+        const name = p.name || title;
+        const createdAt = p.createdAt ? new Date(p.createdAt) : new Date();
+        const updatedAt = p.updatedAt ? new Date(p.updatedAt) : createdAt;
+        const board: Board = {
+          id,
+          title: name,
+          lists: [],
+          backgroundGradiant: backgroundGradiant ?? this.gradients[Math.floor(Math.random() * this.gradients.length)],
+          createdAt,
+          updatedAt,
+          ownerId: p.ownerId
+        };
+        const boards = [...this.boardsSubject.value, board];
+        this.boardsSubject.next(boards);
+        this.saveToLocalStorage();
+        return board;
+      })
+    );
+  }
+
+  getProject(projectId: string): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/projects/${projectId}`, this.getAuthOptions());
+  }
+
+  getProjectMembers(projectId: string): Observable<any[]> {
+    return this.http
+      .get<any>(`${this.baseUrl}/projects/${projectId}`, this.getAuthOptions())
+      .pipe(map((res: any) => res?.project?.members || []));
+  }
+
+  leaveProject(projectId: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/projects/${projectId}/leave`, {}, this.getAuthOptions());
+  }
+
+  deleteProject(projectId: string): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/projects/${projectId}`, this.getAuthOptions());
+  }
+
+  updateProject(projectId: string, changes: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/projects/${projectId}/update`, changes, this.getAuthOptions());
+  }
+
+  inviteMember(projectId: string, name: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/projects/${projectId}/invite`, { name }, this.getAuthOptions());
+  }
+
+  updateMemberRole(projectId: string, userId: string, role: string): Observable<any> {
+    return this.http.patch(
+      `${this.baseUrl}/projects/${projectId}/members/${userId}/role`,
+      { role },
+      this.getAuthOptions()
+    );
+  }
+
+  removeMember(projectId: string, userId: string): Observable<any> {
+    return this.http.post(
+      `${this.baseUrl}/projects/${projectId}/remove/${userId}`,
+      {},
+      this.getAuthOptions()
+    );
+  }
+
+  loadInvitationsReceived(): Observable<any[]> {
+    return this.http.get<any>(`${this.baseUrl}/projects/invitations`, this.getAuthOptions()).pipe(
+      map((res: any) => {
+        const arr = Array.isArray(res?.invitations) ? res.invitations : (Array.isArray(res) ? res : []);
+        this.invitationsReceivedSubject.next(arr);
+        return arr;
+      })
+    );
+  }
+
+  loadInvitationsSent(): Observable<any[]> {
+    return this.http.get<any>(`${this.baseUrl}/projects/sent`, this.getAuthOptions()).pipe(
+      map((res: any) => {
+        const arr = Array.isArray(res?.invitations) ? res.invitations : (Array.isArray(res) ? res : []);
+        this.invitationsSentSubject.next(arr);
+        return arr;
+      })
+    );
+  }
+
+  preloadWorkspaceData(): Observable<{ projects: Board[]; received: any[]; sent: any[] }> {
+    return forkJoin({
+      projects: this.loadProjectsFromServer(),
+      received: this.loadInvitationsReceived(),
+      sent: this.loadInvitationsSent()
+    });
+  }
+
+  loadProjectsFromServer(): Observable<Board[]> {
+    return this.http.get<any>(`${this.baseUrl}/projects`, this.getAuthOptions()).pipe(
+      map((res: any) => {
+        const items = Array.isArray(res?.projects) ? res.projects : (Array.isArray(res) ? res : []);
+        const boards: Board[] = items.map((p: any) => {
+          const id = p?.uuid || p?.id || p?._id || this.generateId();
+          const name = p?.name || 'Untitled';
+          const createdAt = p?.createdAt ? new Date(p.createdAt) : new Date();
+          const updatedAt = p?.updatedAt ? new Date(p.updatedAt) : createdAt;
+          return {
+            id,
+            title: name,
+            lists: [],
+            backgroundGradiant: this.gradients[Math.floor(Math.random() * this.gradients.length)],
+            createdAt,
+            updatedAt,
+            ownerId: p?.ownerId,
+            favorite: typeof p?.favorite === 'boolean' ? p.favorite : undefined,
+            visibility: p?.visibility
+          } as Board;
+        });
+        this.boardsSubject.next(boards);
+        this.saveToLocalStorage();
+        return boards;
+      })
+    );
   }
 
   updateBoard(board: Board): void {

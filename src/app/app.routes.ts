@@ -9,7 +9,9 @@ export const routes: Routes = [
     { path: '', component: HomeComponent,
         children: [
             { path: '', component: TipCardComponent },
-            { path: 'w/board', component: BoardsListComponent }
+            { path: 'w/board', component: BoardsListComponent },
+            { path: 'w/boards', component: BoardsListComponent },
+            { path: 'w/invitations', loadComponent: () => import('./features/home/components/invitations/invitations.component').then(m => m.InvitationsComponent) }
         ],
         canActivate: [authGuard]
     },

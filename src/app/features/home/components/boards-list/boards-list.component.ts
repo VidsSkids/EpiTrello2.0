@@ -29,6 +29,7 @@ export class BoardsListComponent {
 
   ngOnInit(): void {
     this.boards$ = this.boardService.boards$;
+    this.boardService.loadProjectsFromServer().subscribe({ next: () => {}, error: () => {} });
   }
 
   openBoard(boardId: string): void {

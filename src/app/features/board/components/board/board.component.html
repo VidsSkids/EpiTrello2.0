@@ -4,13 +4,90 @@
     <a matButton class="toolbar-title" (click)="goHome()">EpiTrello</a>
   </div>
   <div class="toolbar-profile-container">
-    <button matButton class="toolbar-profile">
+    <button matButton class="toolbar-profile" [matMenuTriggerFor]="userMenu">
       <mat-icon>account_circle</mat-icon>
     </button>
+    <mat-menu #userMenu="matMenu">
+      <button mat-menu-item (click)="toggleMembers()">
+        <mat-icon>group</mat-icon>
+        <span>Members</span>
+      </button>
+      <button mat-menu-item (click)="leaveOrDelete()">
+        <mat-icon>{{ isOwner ? 'delete' : 'logout' }}</mat-icon>
+        <span>{{ isOwner ? 'Delete project' : 'Leave project' }}</span>
+      </button>
+    </mat-menu>
   </div>
 </mat-toolbar>
 
+@if (currentBoard$ | async; as currentBoard) {
+<mat-toolbar class="board-toolbar">
+  <div class="board-left">
+    @if (!editingTitle) {
+      <button mat-button class="board-title" (click)="startEditTitle(currentBoard)">
+        <mat-icon>title</mat-icon>
+        <span>{{ currentBoard.title }}</span>
+      </button>
+    } @else {
+      <mat-form-field appearance="outline" style="min-width: 240px;">
+        <mat-label>Board title</mat-label>
+        <input matInput [(ngModel)]="tempTitle" (keyup.enter)="saveTitle(currentBoard)" (blur)="saveTitle(currentBoard)">
+      </mat-form-field>
+    }
+    <button mat-stroked-button [matMenuTriggerFor]="viewsMenu">
+      <mat-icon>view_agenda</mat-icon>
+      Views
+    </button>
+    <mat-menu #viewsMenu="matMenu">
+      <button mat-menu-item (click)="currentView = 'kanban'"><mat-icon>view_kanban</mat-icon> Kanban</button>
+      <button mat-menu-item (click)="currentView = 'calendar'"><mat-icon>calendar_month</mat-icon> Calendar</button>
+      <button mat-menu-item (click)="currentView = 'timeline'"><mat-icon>timeline</mat-icon> Timeline</button>
+    </mat-menu>
+  </div>
+  <div class="board-right">
+    <button mat-icon-button (click)="toggleFavorite(currentBoard)" [attr.aria-label]="favorite ? 'Unfavorite' : 'Favorite'">
+      <mat-icon>{{ favorite ? 'star' : 'star_border' }}</mat-icon>
+    </button>
+    <button mat-stroked-button (click)="toggleVisibility(currentBoard)">
+      <mat-icon>{{ visibility === 'private' ? 'lock' : 'lock_open' }}</mat-icon>
+      {{ visibility === 'private' ? 'Private' : 'Public' }}
+    </button>
+    <button mat-raised-button color="primary" (click)="openShareDialog(shareDialog)">
+      <mat-icon>share</mat-icon>
+      Share
+    </button>
+  </div>
+</mat-toolbar>
+}
+
 <div class="board-container" [style.background]="(currentBoard$ | async)?.backgroundGradiant">
+  @if (showMembers) {
+    <div class="members-panel">
+      <div class="members-header">
+        <mat-icon>group</mat-icon>
+        <span style="margin-left: 8px;">Project members</span>
+      </div>
+      <div class="members-list">
+        @if ((members.length || 0) === 0) {
+          <div class="members-empty">No members</div>
+        } @else {
+          @for (m of members; track m.id) {
+            <div class="member-item" style="display: flex; align-items: center; gap: 8px;">
+              <mat-icon>person</mat-icon>
+              <span style="margin-left: 8px;">{{ m.name || m.email || m.id }}</span>
+              <span style="margin-left: 8px; color: var(--mat-sys-on-surface-variant); font-size: 12px;">{{ m.role }}</span>
+              <span style="margin-left: auto;"></span>
+              @if (canRemove(m)) {
+                <button mat-icon-button color="warn" (click)="removeMember(m)">
+                  <mat-icon>person_remove</mat-icon>
+                </button>
+              }
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
   
   @if (currentBoard$ | async; as currentBoard) {
     <div class="board-content">
@@ -63,3 +140,68 @@
     </div>
   }
 </div>
+
+<ng-template #shareDialog>
+  <div class="share-dialog">
+    <h3>Partager ce projet</h3>
+    <div class="share-row">
+      <mat-form-field appearance="outline" style="flex: 1;">
+        <mat-label>Nom</mat-label>
+        <input matInput #inviteName placeholder="Ex: Jean Dupont">
+      </mat-form-field>
+      <button mat-raised-button color="primary" (click)="sendInvite(inviteName.value)">
+        <mat-icon>send</mat-icon>
+        Envoyer
+      </button>
+    </div>
+    @if (inviteError) { <div class="error">{{ inviteError }}</div> }
+    <div class="share-section">
+      <h4>Membres</h4>
+      @if ((members.length || 0) === 0) {
+        <div class="members-empty">Aucun membre</div>
+      } @else {
+        <div class="members-list">
+          @for (m of members; track m.userId) {
+            <div class="member-item">
+              <mat-icon>person</mat-icon>
+              <div class="member-info">
+                <div class="member-name">{{ m.name || m.email || m.userId || m.id }}</div>
+              </div>
+              @if (canRemove(m)) {
+                <button mat-icon-button color="warn" (click)="removeMember(m)">
+                  <mat-icon>person_remove</mat-icon>
+                </button>
+              }
+              <mat-form-field appearance="fill" class="member-role">
+                <mat-label>Role</mat-label>
+                <mat-select [(ngModel)]="m.role" (selectionChange)="changeMemberRole(m, $event.value)">
+                  <mat-option value="Reader">Reader</mat-option>
+                  <mat-option value="Contributer">Contributer</mat-option>
+                  <mat-option value="Administrator">Administrator</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+          }
+        </div>
+      }
+    </div>
+    <div class="share-section">
+      <h4>Demandes d'adhésion</h4>
+      @if ((invitations.length || 0) === 0) {
+        <div class="members-empty">Aucune demande</div>
+      } @else {
+        <div class="members-list">
+          @for (inv of invitations; track inv.id) {
+            <div class="member-item">
+              <mat-icon>mail</mat-icon>
+              <div class="member-info">
+                <div class="member-name">{{ inv.name || inv.email || inv.userId || inv.id }}</div>
+                <div class="member-sub">{{ inv.createdAt | date:'short' }}</div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</ng-template>

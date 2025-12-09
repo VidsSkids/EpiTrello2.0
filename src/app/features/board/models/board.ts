@@ -5,4 +5,7 @@ export interface Board {
   backgroundGradiant: string;
   createdAt: Date;
   updatedAt: Date;
+  ownerId?: string;
+  favorite?: boolean;
+  visibility?: 'private' | 'public';
 }
