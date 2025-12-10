@@ -55,4 +55,4 @@ class ColumnController {
     }
 }
 
-export default new ColumnController();
+export default ColumnController;

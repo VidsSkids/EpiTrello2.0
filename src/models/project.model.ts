@@ -24,7 +24,7 @@ export interface IProject extends Document {
   createdAt?: Date;
   updatedAt?: Date;
   columns: IProjectColumn[];
-  tags?: IProjectTag[];
+  tags: IProjectTag[];
 }
 
 const MemberSchema = new Schema<IProjectMember>({
