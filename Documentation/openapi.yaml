@@ -11,6 +11,8 @@ tags:
     description: Authentication operations
   - name: projects
     description: Project management operations
+  - name: tags
+    description: Tag management operations
   - name: columns
     description: Column management operations
   - name: cards
@@ -222,6 +224,124 @@ paths:
       responses:
         '200':
           description: list
+  /api/projects/:project_id/tags:
+    post:
+      tags: [tags]
+      summary: Create a new tag in the project
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                color:
+                  type: string
+      responses:
+        '201':
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  newTag:
+                    $ref: '#/components/schemas/Tag'
+  /api/projects/{projectId}/tags/{tagId}:
+    delete:
+      tags: [tags]
+      summary: Delete a tag from the project
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - $ref: '#/components/parameters/tagId'
+      responses:
+        '204':
+          description: Tag deleted
+    patch:
+      tags: [tags]
+      description: Update a tag's details
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - $ref: '#/components/parameters/tagId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                color:
+                  type: string
+      responses:
+        '200':
+          description: Tag updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  updatedTag:
+                    $ref: '#/components/schemas/Tag'
+
+  /api/projects/{projectId}/tags/attach/{tagId}/{cardId}:
+    post:
+      tags: [tags]
+      summary: Attach a tag to a card
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - $ref: '#/components/parameters/tagId'
+        - $ref: '#/components/parameters/cardId'
+      responses:
+        '200':
+          description: Tag attached to card
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
+  /api/projects/{projectId}/tags/detach/{tagId}/{cardId}:
+    post:
+      tags: [tags]
+      summary: Detach a tag from a card
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/projectId'
+        - $ref: '#/components/parameters/tagId'
+        - $ref: '#/components/parameters/cardId'
+      responses:
+        '200':
+          description: Tag detached from card
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+
   /api/projects/{projectId}/columns/{columnId}/cards:
     post:
       tags: [cards]
@@ -476,6 +596,13 @@ components:
       schema:
         type: string
       description: Checklist Item mongo _id
+    tagId:
+      name: tagId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Tag mongo _id
 
   schemas:
     RegisterRequest:
@@ -722,6 +849,18 @@ components:
           description: Array of user IDs
           items:
             type: string
+    Tag:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        color:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
     ErrorResponse:
       type: object
       properties:
