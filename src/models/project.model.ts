@@ -6,6 +6,7 @@ export type ProjectRole = 'Reader' | 'Contributer' | 'Administrator' | 'Owner';
 
 export interface IProjectMember {
   userId: string; // public id (uuid) or mongo _id string
+  username: string; // optional username for display purposes
   role: ProjectRole;
 }
 
@@ -29,6 +30,7 @@ export interface IProject extends Document {
 
 const MemberSchema = new Schema<IProjectMember>({
   userId: { type: String, required: true },
+  username: { type: String, required: true },
   role: { type: String, required: true, enum: ['Reader', 'Contributer', 'Administrator', 'Owner'] },
 }, { _id: false });
 

@@ -673,6 +673,8 @@ components:
       properties:
         userId:
           type: string
+        username:
+          type: string
         role:
           type: string
           enum:
