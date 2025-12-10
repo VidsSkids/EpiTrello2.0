@@ -93,8 +93,8 @@ export class ProjectService {
       await project.save();
       return { message: 'Already a member' };
     }
-
-    project.members.push({ userId: publicId, role: 'Reader' });
+    const username = user.get('username') as string | undefined || 'Unnamed';
+    project.members.push({ userId: publicId, username, role: 'Reader' });
     await project.save();
     return { message: 'Invitation accepted', projectId: project.uuid };
   }
