@@ -42,6 +42,8 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.APP_DIR }}
-            /home/ubuntu/.nvm/versions/node/v20.19.6/bin/npm ci --omit=dev
-            /home/ubuntu/.nvm/versions/node/v20.19.6/bin/pm2 restart epitrello || /home/ubuntu/.nvm/versions/node/v20.19.6/bin/pm2 start npm --name epitrello-- run start-build
+            npm ci --omit=dev
+            pm2 restart epitrello || pm2 start npm --name epitrello-- run start-build
