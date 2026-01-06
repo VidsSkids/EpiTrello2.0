@@ -7,6 +7,9 @@ on:
   push:
     branches: [backend-main]
 
+env:
+  DATABASE_URL: mongodb://mongo:password@141.95.167.31:5001/?authSource=admin
+
 jobs:
   test:
     runs-on: ubuntu-latest
