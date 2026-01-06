@@ -43,4 +43,4 @@ jobs:
           script: |
             cd ${{ secrets.APP_DIR }}
             npm ci --omit=dev
-            pm2 restart epitrello || pm2 start dist/server.js --name epitrello
+            pm2 restart epitrello || pm2 start npm --name epitrello-- run start-build
