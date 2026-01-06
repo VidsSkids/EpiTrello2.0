@@ -46,4 +46,4 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.APP_DIR }}
             npm ci --omit=dev
-            pm2 restart epitrello || pm2 start npm --name epitrello-- run start-build
+            pm2 restart epitrello || pm2 start npm --name epitrello -- run start-build
