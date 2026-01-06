@@ -3,6 +3,7 @@ import ProjectModel, { IProject, IProjectMember, ProjectRole } from '../models/p
 import UserModel from '../models/user.model';
 import { ConflictError, NotFoundError, ForbiddenError, BadRequestError } from '../errors';
 import { Types } from 'mongoose';
+import { UserService } from './user.service';
 
 function hasPermission(role: ProjectRole | undefined, needed: 'invite' | 'manage') {
   if (!role) return false;
@@ -12,14 +13,19 @@ function hasPermission(role: ProjectRole | undefined, needed: 'invite' | 'manage
 }
 
 export class ProjectService {
+  private userService;
+  constructor() {
+    this.userService = new UserService();
+  }
   async createProject(name: string, ownerId: string) {
     if (!name) throw new BadRequestError('Project name is required');
     const uuid = uuidv4();
+    const ownerUser = await this.userService.getUserById(ownerId);
     const project = await ProjectModel.create({
       uuid,
       name,
       ownerId,
-      members: [{ userId: ownerId, role: 'Owner' as ProjectRole }],
+      members: [{ userId: ownerId, username: ownerUser.name, role: 'Owner' as ProjectRole }],
     });
     return {
       id: project.uuid,

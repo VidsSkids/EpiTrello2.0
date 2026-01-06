@@ -6,7 +6,7 @@ export type ProjectRole = 'Reader' | 'Contributer' | 'Administrator' | 'Owner';
 
 export interface IProjectMember {
   userId: string; // public id (uuid) or mongo _id string
-  username: string; // optional username for display purposes
+  username: string; // username for display purposes
   role: ProjectRole;
 }
 

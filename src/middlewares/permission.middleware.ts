@@ -3,12 +3,12 @@ import { ProjectRole } from '../models/project.model';
 import { ProjectService } from '../services/project.service';
 
 interface AuthPayload {
-  id: string;
-  name: string;
+    id: string;
+    name: string;
 }
 
 interface AuthRequest extends Request {
-  user?: AuthPayload;
+    user?: AuthPayload;
 }
 
 function hasPermission(role: ProjectRole | undefined, action: 'read' | 'write') {
