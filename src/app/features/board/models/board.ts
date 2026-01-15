@@ -1,8 +1,0 @@
-export interface Board {
-  id: string;
-  title: string;
-  lists: string[]; // array of id
-  backgroundGradiant: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
