@@ -17,8 +17,8 @@ import { ListComponent } from '../list/list.component'
 import { Board as BoardModel } from '../../models/board'
 import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router'
 import { Router } from '@angular/router'
-import { Observable, of, combineLatest, Subject } from 'rxjs'
-import { map, take } from 'rxjs/operators'
+import { Observable, of, combineLatest, Subject, startWith } from 'rxjs'
+import { map, take, switchMap, shareReplay } from 'rxjs/operators'
 import { AuthService } from '@features/auth/services/auth.service'
 
 @Component({
@@ -47,6 +47,16 @@ export class BoardComponent implements OnInit {
   currentBoardId$!: Observable<string | null>;
   currentBoard$!: Observable<BoardModel | undefined>;
   lists$!: Observable<List[]>;
+  project$!: Observable<any | null>;
+  projectMembers$!: Observable<any[]>;
+  projectInvitations$!: Observable<any[]>;
+  projectTags$!: Observable<any[]>;
+  projectColumns$!: Observable<any[]>;
+  ownerId$!: Observable<string | null>;
+  projectName$!: Observable<string>;
+  createdAt$!: Observable<Date | null>;
+  updatedAt$!: Observable<Date | null>;
+  refreshProject$ = new Subject<void>();
 
   newBoardTitle = '';
   newListTitle = '';
@@ -59,7 +69,7 @@ export class BoardComponent implements OnInit {
   editingTitle = false;
   tempTitle = '';
   favorite = false;
-  visibility: 'private' | 'public' = 'private';
+  visibility: 'private' | 'public' | 'workspace' | 'Workspace' = 'private';
   currentView: 'kanban' | 'calendar' | 'timeline' = 'kanban';
   invitations: any[] = [];
   inviteError: string | null = null;
@@ -72,16 +82,15 @@ export class BoardComponent implements OnInit {
   onListDrop(event: CdkDragDrop<any[]>): void {
     const lists = event.container.data as List[];
     moveItemInArray(lists, event.previousIndex, event.currentIndex);
-    lists.forEach((list, index) => {
-      this.boardService.updateList({ ...list, position: index });
-    });
     const boardId = lists[0]?.boardId;
-    if (boardId) {
-      const board = this.boardService.getBoardById(boardId);
-      if (board) {
-        this.boardService.updateBoard({ ...board, lists: lists.map(l => l.id) });
-      }
-    }
+    if (!boardId) return;
+    lists.forEach((list, index) => {
+      this.boardService.reorderColumn(boardId, list.id, index).subscribe({
+        next: () => console.log('API:reorderColumn:success', { boardId, columnId: list.id, newIndex: index }),
+        error: (err) => console.error('API:reorderColumn:error', { boardId, columnId: list.id, newIndex: index, err })
+      });
+    });
+    this.refreshProject();
   }
 
   constructor(
@@ -93,42 +102,90 @@ export class BoardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.boards$ = this.boardService.getBoards();
+    this.boards$ = of([]);
 
     const id$ = this.route.paramMap.pipe(map(pm => pm.get('id')));
     const parentId$ = this.route.parent ? this.route.parent.paramMap.pipe(map(pm => pm.get('id'))) : of(null);
     this.currentBoardId$ = combineLatest([id$, parentId$]).pipe(map(([id, pid]) => id ?? pid));
 
-    this.currentBoard$ = combineLatest([this.boards$, this.currentBoardId$]).pipe(
-      map(([boards, id]) => boards.find(b => b.id === id))
+    this.project$ = this.currentBoardId$.pipe(
+      switchMap(id => (id ? this.refreshProject$.pipe(startWith(undefined), switchMap(() => this.boardService.getProject(id))) : of(null))),
+      map((p: any) => (p ? (p?.project || p) : null)),
+      shareReplay(1)
     );
 
-    this.lists$ = combineLatest([this.boardService.lists$, this.currentBoardId$]).pipe(
-      map(([lists, id]) => (id ? lists.filter(l => l.boardId === id).sort((a, b) => a.position - b.position) : []))
+    this.project$.subscribe(p => console.log('Project:', p));
+
+
+    this.projectName$ = this.project$.pipe(map(p => (p?.name || 'Untitled')));
+    this.ownerId$ = this.project$.pipe(map(p => p?.ownerId || null));
+    this.projectMembers$ = this.project$.pipe(map(p => p?.members || []));
+    this.projectInvitations$ = this.project$.pipe(map(p => p?.invitations || []));
+    this.projectTags$ = this.project$.pipe(map(p => p?.tags || []));
+    this.projectColumns$ = this.project$.pipe(map(p => p?.columns || []));
+    this.createdAt$ = this.project$.pipe(map(p => (p?.createdAt ? new Date(p.createdAt) : null)));
+    this.updatedAt$ = this.project$.pipe(map(p => (p?.updatedAt ? new Date(p.updatedAt) : null)));
+
+    this.lists$ = combineLatest([this.projectColumns$, this.project$]).pipe(
+      map(([columns, proj]) => {
+        const boardId = proj ? (proj.uuid || proj.id || proj._id) : null;
+        return (Array.isArray(columns) ? columns : []).map((c: any, index: number) => {
+          const id = c?.uuid || c?.id || c?._id || (boardId ? `${boardId}-col-${index}` : `${index}`);
+          const title = c?.name || c?.title || 'Untitled';
+          const position = typeof c?.position === 'number' ? c.position : index;
+          const cards = Array.isArray(c?.cards) ? c.cards : [];
+          const list: List = {
+            id,
+            title,
+            boardId: boardId || '',
+            cards,
+            position,
+            createdAt: proj?.createdAt ? new Date(proj.createdAt) : new Date(),
+            updatedAt: proj?.updatedAt ? new Date(proj.updatedAt) : new Date()
+          };
+          return list;
+        }).sort((a, b) => a.position - b.position);
+      })
     );
 
-    this.currentBoard$.subscribe((board) => {
-      if (!board) return;
+    this.currentBoard$ = combineLatest([this.project$, this.lists$]).pipe(
+      map(([p, lists]) => {
+        if (!p) return undefined;
+        const id = p?.uuid || p?.id || p?._id;
+        const createdAt = p?.createdAt ? new Date(p.createdAt) : new Date();
+        const updatedAt = p?.updatedAt ? new Date(p.updatedAt) : createdAt;
+        const b: BoardModel = {
+          id,
+          title: p?.name || 'Untitled',
+          lists: (lists || []).map(l => l.id),
+          createdAt,
+          updatedAt,
+          ownerId: p?.ownerId,
+          visibility: p?.visibility,
+          favorite: p?.favorite
+        } as BoardModel;
+        return b;
+      })
+    );
+
+    this.project$.subscribe((project) => {
+      if (!project) return;
       const uid = this.getUserId();
-      if (board.ownerId && uid) {
-        this.isOwner = board.ownerId === uid;
-      } else {
-        this.boardService.getProject(board.id).subscribe({
-          next: (p) => {
-            const project = p?.project || p;
-            const ownerId = project?.ownerId;
-            const vis = project?.visibility || board.visibility;
-            const fav = project?.favorite ?? board.favorite;
-            if (vis) this.visibility = vis;
-            if (typeof fav === 'boolean') this.favorite = fav;
-            if (ownerId) {
-              this.ownerId = ownerId;
-              this.isOwner = uid ? ownerId === uid : false;
-            }
-          },
-          error: () => {}
-        });
+      const ownerId = project?.ownerId;
+      const vis = project?.visibility;
+      const fav = project?.favorite;
+      if (vis) this.visibility = vis;
+      if (typeof fav === 'boolean') this.favorite = fav;
+      if (ownerId) {
+        this.ownerId = ownerId;
+        this.isOwner = uid ? ownerId === uid : false;
       }
+      this.invitations = project?.invitations || [];
+    });
+
+    this.projectMembers$.subscribe(members => {
+      if (!members) return;
+      this.members = members.map(m => ({ userId: m.userId, username: m.username, role: m.role}));
     });
   }
 
@@ -144,11 +201,12 @@ export class BoardComponent implements OnInit {
     if (this.newBoardTitle.trim()) {
       this.boardService.createBoardFromServer(this.newBoardTitle).subscribe({
         next: (board) => {
+          console.log('API:createProject:success', { id: board.id, title: board.title });
           this.newBoardTitle = '';
           this.showNewBoardForm = false;
           this.router.navigate(['/board', board.id]);
         },
-        error: () => {}
+        error: (err) => console.error('API:createProject:error', err)
       });
     }
   }
@@ -157,9 +215,15 @@ export class BoardComponent implements OnInit {
     if (this.newListTitle.trim()) {
       const id = this.route.snapshot.paramMap.get('id') || this.route.parent?.snapshot.paramMap.get('id');
       if (id) {
-        this.boardService.createList(id, this.newListTitle);
-        this.newListTitle = '';
-        this.showNewListForm = false;
+        this.boardService.createColumn(id, this.newListTitle).subscribe({
+          next: () => {
+            console.log('API:createColumn:success', { projectId: id, name: this.newListTitle });
+            this.newListTitle = '';
+            this.showNewListForm = false;
+            this.refreshProject();
+          },
+          error: (err) => console.error('API:createColumn:error', { projectId: id, name: this.newListTitle, err })
+        });
       }
     }
   }
@@ -175,30 +239,44 @@ export class BoardComponent implements OnInit {
     }
   }
 
+  refreshProject(): void {
+    this.refreshProject$.next();
+  }
+
   goHome(): void {
     this.router.navigate(['/']);
   }
   toggleMembers(): void {
-    this.showMembers = !this.showMembers;
-    if (!this.showMembers) return;
-    this.currentBoardId$.subscribe(id => {
+    this.onMembersMenuOpened();
+  }
+
+  onMembersMenuOpened(): void {
+    this.currentBoardId$.pipe(take(1)).subscribe(id => {
       if (!id) return;
       this.boardService.getProjectMembers(id).subscribe({
         next: (list) => {
+          console.log('API:getProjectMembers:success', { projectId: id, count: (list || []).length });
           this.members = list || [];
+          if (this.ownerId) {
+            const hasOwner = (this.members || []).some(m => (m.userId || m.id) === this.ownerId);
+            if (!hasOwner) {
+              this.members = [...this.members, { id: this.ownerId, userId: this.ownerId, role: 'Owner' }];
+            }
+          }
           const uid = this.getUserId();
           const mine = (this.members || []).find(m => (m.userId || m.id) === uid);
           this.myRole = mine?.role;
         },
-        error: () => this.members = []
+        error: (err) => { console.error('API:getProjectMembers:error', { projectId: id, err }); this.members = []; }
       });
       if (!this.ownerId) {
         this.boardService.getProject(id).subscribe({
           next: (p) => {
             const project = p?.project || p;
             this.ownerId = project?.ownerId || null;
+            console.log('API:getProject:success', { projectId: id, name: project?.name });
           },
-          error: () => {}
+          error: (err) => console.error('API:getProject:error', { projectId: id, err })
         });
       }
     });
@@ -209,13 +287,13 @@ export class BoardComponent implements OnInit {
       if (!id) return;
       if (this.isOwner) {
         this.boardService.deleteProject(id).subscribe({
-          next: () => this.router.navigate(['/']),
-          error: () => {}
+          next: () => { console.log('API:deleteProject:success', { projectId: id }); this.router.navigate(['/']); },
+          error: (err) => console.error('API:deleteProject:error', { projectId: id, err })
         });
       } else {
         this.boardService.leaveProject(id).subscribe({
-          next: () => this.router.navigate(['/']),
-          error: () => {}
+          next: () => { console.log('API:leaveProject:success', { projectId: id }); this.router.navigate(['/']); },
+          error: (err) => console.error('API:leaveProject:error', { projectId: id, err })
         });
       }
     });
@@ -234,8 +312,8 @@ export class BoardComponent implements OnInit {
     this.currentBoardId$.subscribe(id => {
       if (!id) { this.editingTitle = false; return; }
       this.boardService.updateProject(id, { name }).subscribe({
-        next: () => { this.editingTitle = false; },
-        error: () => { this.editingTitle = false; }
+        next: () => { console.log('API:updateProject:name:success', { projectId: id, name }); this.editingTitle = false; },
+        error: (err) => { console.error('API:updateProject:name:error', { projectId: id, name, err }); this.editingTitle = false; }
       });
     });
   }
@@ -247,18 +325,23 @@ export class BoardComponent implements OnInit {
     this.boardService.updateBoard(updated);
     this.currentBoardId$.subscribe(id => {
       if (!id) return;
-      this.boardService.updateProject(id, { favorite: fav }).subscribe({ next: () => {}, error: () => {} });
+      this.boardService.updateProject(id, { favorite: fav }).subscribe({
+        next: () => console.log('API:updateProject:favorite:success', { projectId: id, favorite: fav }),
+        error: (err) => console.error('API:updateProject:favorite:error', { projectId: id, favorite: fav, err })
+      });
     });
   }
 
-  toggleVisibility(board: BoardModel): void {
-    const next = this.visibility === 'private' ? 'public' : 'private';
-    this.visibility = next;
-    const updated: BoardModel = { ...board, visibility: next };
-    this.boardService.updateBoard(updated);
-    this.currentBoardId$.subscribe(id => {
-      if (!id) return;
-      this.boardService.updateProject(id, { visibility: next }).subscribe({ next: () => {}, error: () => {} });
+  setVisibility(vis: 'private' | 'public' | 'workspace' | 'Workspace'): void {
+    this.visibility = vis;
+    this.currentBoard$.pipe(take(1)).subscribe(board => {
+      if (!board) return;
+      const updated: BoardModel = { ...board, visibility: vis };
+      this.boardService.updateBoard(updated);
+      this.boardService.updateProject(board.id, { visibility: vis }).subscribe({
+        next: () => console.log('API:updateProject:visibility:success', { projectId: board.id, visibility: vis }),
+        error: (err) => console.error('API:updateProject:visibility:error', { projectId: board.id, visibility: vis, err })
+      });
     });
   }
 
@@ -270,16 +353,32 @@ export class BoardComponent implements OnInit {
         next: (p) => {
           const project = p?.project || p;
           this.invitations = project?.invitations || [];
+          if (project?.ownerId) {
+            this.ownerId = project.ownerId;
+            const uid = this.getUserId();
+            this.isOwner = uid ? this.ownerId === uid : false;
+          }
           this.boardService.getProjectMembers(id).subscribe({
-            next: (list) => { this.members = list || []; this.dialog.open(tpl, { width: '640px' }); },
-            error: () => { this.members = []; this.dialog.open(tpl, { width: '640px' }); }
+            next: (list) => {
+              this.members = list || [];
+              if (this.ownerId) {
+                const hasOwner = (this.members || []).some(m => (m.userId || m.id) === this.ownerId);
+                if (!hasOwner) {
+                  this.members = [...this.members, { id: this.ownerId, userId: this.ownerId, role: 'Administrator' }];
+                }
+              }
+              console.log('API:getProjectMembers:success', { projectId: id, count: (this.members || []).length });
+              this.dialog.open(tpl, { width: '640px' });
+            },
+            error: (err) => { console.error('API:getProjectMembers:error', { projectId: id, err }); this.members = []; this.dialog.open(tpl, { width: '640px' }); }
           });
         },
-        error: () => {
+        error: (err) => {
+          console.error('API:getProject:error', { projectId: id, err });
           this.invitations = [];
           this.boardService.getProjectMembers(id).subscribe({
-            next: (list) => { this.members = list || []; this.dialog.open(tpl, { width: '640px' }); },
-            error: () => { this.members = []; this.dialog.open(tpl, { width: '640px' }); }
+            next: (list) => { console.log('API:getProjectMembers:success', { projectId: id, count: (list || []).length }); this.members = list || []; this.dialog.open(tpl, { width: '640px' }); },
+            error: (err2) => { console.error('API:getProjectMembers:error', { projectId: id, err: err2 }); this.members = []; this.dialog.open(tpl, { width: '640px' }); }
           });
         }
       });
@@ -302,8 +401,45 @@ export class BoardComponent implements OnInit {
             error: () => {}
           });
           this.inviteError = null;
+          console.log('API:inviteMember:success', { projectId: id, name: nm });
         },
-        error: (err) => { this.inviteError = err?.error?.message || 'Impossible d\'envoyer l\'invitation'; }
+        error: (err) => { console.error('API:inviteMember:error', { projectId: id, name: nm, err }); this.inviteError = err?.error?.message || 'Impossible d\'envoyer l\'invitation'; }
+      });
+    });
+  }
+
+  acceptInvitation(invitation: any): void {
+    this.currentBoardId$.pipe(take(1)).subscribe(id => {
+      if (!id || !invitation?.id) return;
+      this.boardService.acceptInvitation(id, invitation.id).subscribe({
+        next: () => {
+          this.boardService.getProject(id).subscribe({
+            next: (p) => { const project = p?.project || p; this.invitations = project?.invitations || []; },
+            error: () => {}
+          });
+          this.boardService.getProjectMembers(id).subscribe({
+            next: (list) => (this.members = list || []),
+            error: () => {}
+          });
+          console.log('API:acceptInvitation:success', { projectId: id, invitationId: invitation.id });
+        },
+        error: (err) => console.error('API:acceptInvitation:error', { projectId: id, invitationId: invitation.id, err })
+      });
+    });
+  }
+
+  revokeInvitation(invitation: any): void {
+    this.currentBoardId$.pipe(take(1)).subscribe(id => {
+      if (!id || !invitation?.id) return;
+      this.boardService.cancelInvitation(id, invitation.id).subscribe({
+        next: () => {
+          this.boardService.getProject(id).subscribe({
+            next: (p) => { const project = p?.project || p; this.invitations = project?.invitations || []; },
+            error: () => {}
+          });
+          console.log('API:revokeInvitation:success', { projectId: id, invitationId: invitation.id });
+        },
+        error: (err) => console.error('API:revokeInvitation:error', { projectId: id, invitationId: invitation.id, err })
       });
     });
   }
@@ -313,14 +449,17 @@ export class BoardComponent implements OnInit {
       if (!id) return;
       const uid = member?.userId || member?.id;
       if (!uid) return;
+      if (this.ownerId && uid === this.ownerId) return;
       this.boardService.updateMemberRole(id, uid, role).subscribe({
         next: () => {
           this.boardService.getProjectMembers(id).subscribe({
             next: (list) => (this.members = list || []),
             error: () => {}
           });
+          console.log('API:updateMemberRole:success', { projectId: id, userId: uid, role });
         },
-        error: () => {
+        error: (err) => {
+          console.error('API:updateMemberRole:error', { projectId: id, userId: uid, role, err });
           this.boardService.getProjectMembers(id).subscribe({
             next: (list) => (this.members = list || []),
             error: () => {}
@@ -349,8 +488,9 @@ export class BoardComponent implements OnInit {
             next: (list) => (this.members = list || []),
             error: () => {}
           });
+          console.log('API:removeMember:success', { projectId: id, userId: uid });
         },
-        error: () => {}
+        error: (err) => console.error('API:removeMember:error', { projectId: id, userId: uid, err })
       });
     });
   }

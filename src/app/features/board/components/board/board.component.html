@@ -8,7 +8,7 @@
       <mat-icon>account_circle</mat-icon>
     </button>
     <mat-menu #userMenu="matMenu">
-      <button mat-menu-item (click)="toggleMembers()">
+      <button mat-menu-item [matMenuTriggerFor]="membersMenu">
         <mat-icon>group</mat-icon>
         <span>Members</span>
       </button>
@@ -48,10 +48,35 @@
     <button mat-icon-button (click)="toggleFavorite(currentBoard)" [attr.aria-label]="favorite ? 'Unfavorite' : 'Favorite'">
       <mat-icon>{{ favorite ? 'star' : 'star_border' }}</mat-icon>
     </button>
-    <button mat-stroked-button (click)="toggleVisibility(currentBoard)">
-      <mat-icon>{{ visibility === 'private' ? 'lock' : 'lock_open' }}</mat-icon>
-      {{ visibility === 'private' ? 'Private' : 'Public' }}
+    <button mat-icon-button [matMenuTriggerFor]="membersMenu" aria-label="Members">
+      <mat-icon>group</mat-icon>
     </button>
+    <button mat-icon-button [matMenuTriggerFor]="visibilityMenu">
+      <mat-icon>person</mat-icon>
+    </button>
+    <mat-menu #visibilityMenu="matMenu">
+      <button mat-menu-item (click)="setVisibility('private')">
+        <mat-icon [style.visibility]="(visibility | lowercase) === 'private' ? 'visible' : 'hidden'">check</mat-icon>
+        <div class="vis-menu-item">
+          <span class="vis-title">Private</span>
+          <span class="vis-desc">Only board members can see and edit this board.</span>
+        </div>
+      </button>
+      <button mat-menu-item (click)="setVisibility('workspace')">
+        <mat-icon [style.visibility]="(visibility | lowercase) === 'workspace' ? 'visible' : 'hidden'">check</mat-icon>
+        <div class="vis-menu-item">
+          <span class="vis-title">Workspace</span>
+          <span class="vis-desc">All members of the Workspace can see and edit this board.</span>
+        </div>
+      </button>
+      <button mat-menu-item (click)="setVisibility('public')">
+        <mat-icon [style.visibility]="(visibility | lowercase) === 'public' ? 'visible' : 'hidden'">check</mat-icon>
+        <div class="vis-menu-item">
+          <span class="vis-title">Public</span>
+          <span class="vis-desc">Anyone on the internet can see this board. Only board members can edit.</span>
+        </div>
+      </button>
+    </mat-menu>
     <button mat-raised-button color="primary" (click)="openShareDialog(shareDialog)">
       <mat-icon>share</mat-icon>
       Share
@@ -60,34 +85,7 @@
 </mat-toolbar>
 }
 
-<div class="board-container" [style.background]="(currentBoard$ | async)?.backgroundGradiant">
-  @if (showMembers) {
-    <div class="members-panel">
-      <div class="members-header">
-        <mat-icon>group</mat-icon>
-        <span style="margin-left: 8px;">Project members</span>
-      </div>
-      <div class="members-list">
-        @if ((members.length || 0) === 0) {
-          <div class="members-empty">No members</div>
-        } @else {
-          @for (m of members; track m.id) {
-            <div class="member-item" style="display: flex; align-items: center; gap: 8px;">
-              <mat-icon>person</mat-icon>
-              <span style="margin-left: 8px;">{{ m.name || m.email || m.id }}</span>
-              <span style="margin-left: 8px; color: var(--mat-sys-on-surface-variant); font-size: 12px;">{{ m.role }}</span>
-              <span style="margin-left: auto;"></span>
-              @if (canRemove(m)) {
-                <button mat-icon-button color="warn" (click)="removeMember(m)">
-                  <mat-icon>person_remove</mat-icon>
-                </button>
-              }
-            </div>
-          }
-        }
-      </div>
-    </div>
-  }
+<div class="board-container">
   
   @if (currentBoard$ | async; as currentBoard) {
     <div class="board-content">
@@ -96,6 +94,9 @@
           @for (list of lists; track list.id) {
             <app-list 
               [list]="list" 
+              [allLists]="lists"
+              [allTags]="(projectTags$ | async) || []"
+              (listUpdated)="refreshProject()"
               cdkDrag
               class="list-item">
             </app-list>
@@ -165,30 +166,35 @@
             <div class="member-item">
               <mat-icon>person</mat-icon>
               <div class="member-info">
-                <div class="member-name">{{ m.name || m.email || m.userId || m.id }}</div>
+                <div class="member-name">
+                  {{ m.username }} 
+                  @if (ownerId && (m.id === ownerId)) { <strong>(Owner)</strong> }
+                </div>
               </div>
+              <div style="flex: 1;"></div>
+              
+              @if (!ownerId || (m.id !== ownerId)) {
+                <button mat-icon-button [matMenuTriggerFor]="roleMenu" [matMenuTriggerData]="{member: m}">
+                  <mat-icon>{{ (m.role === 'Administrator' || m.role === 'Owner') ? 'admin_panel_settings' : (m.role === 'Contributer' ? 'edit' : 'visibility') }}</mat-icon>
+                </button>
+              } @else {
+                <mat-icon>{{ (m.role === 'Owner') ? 'admin_panel_settings' : 'person' }}</mat-icon>
+              }
+
               @if (canRemove(m)) {
                 <button mat-icon-button color="warn" (click)="removeMember(m)">
                   <mat-icon>person_remove</mat-icon>
                 </button>
               }
-              <mat-form-field appearance="fill" class="member-role">
-                <mat-label>Role</mat-label>
-                <mat-select [(ngModel)]="m.role" (selectionChange)="changeMemberRole(m, $event.value)">
-                  <mat-option value="Reader">Reader</mat-option>
-                  <mat-option value="Contributer">Contributer</mat-option>
-                  <mat-option value="Administrator">Administrator</mat-option>
-                </mat-select>
-              </mat-form-field>
             </div>
           }
         </div>
       }
     </div>
     <div class="share-section">
-      <h4>Demandes d'adhésion</h4>
+      <h4>Invitations</h4>
       @if ((invitations.length || 0) === 0) {
-        <div class="members-empty">Aucune demande</div>
+        <div class="members-empty">Aucune invitation</div>
       } @else {
         <div class="members-list">
           @for (inv of invitations; track inv.id) {
@@ -198,10 +204,77 @@
                 <div class="member-name">{{ inv.name || inv.email || inv.userId || inv.id }}</div>
                 <div class="member-sub">{{ inv.createdAt | date:'short' }}</div>
               </div>
+              <div style="flex: 1;"></div>
+              <button mat-button color="warn" (click)="revokeInvitation(inv)">Revoke</button>
             </div>
           }
         </div>
       }
+     </div>
+   </div>
+</ng-template>
+
+<mat-menu #roleMenu="matMenu" yPosition="below" xPosition="after" overlapTrigger="false">
+  <ng-template matMenuContent let-m="member">
+    <button mat-menu-item (click)="changeMemberRole(m, 'Reader')">
+      <mat-icon [style.visibility]="m.role === 'Reader' ? 'visible' : 'hidden'">check</mat-icon>
+      <div class="vis-menu-item">
+        <span class="vis-title">Reader</span>
+        <span class="vis-desc">Can only view the board.</span>
+      </div>
+    </button>
+    <button mat-menu-item (click)="changeMemberRole(m, 'Contributer')">
+      <mat-icon [style.visibility]="m.role === 'Contributer' ? 'visible' : 'hidden'">check</mat-icon>
+      <div class="vis-menu-item">
+        <span class="vis-title">Contributer</span>
+        <span class="vis-desc">Can view and edit the board.</span>
+      </div>
+    </button>
+    <button mat-menu-item (click)="changeMemberRole(m, 'Administrator')">
+      <mat-icon [style.visibility]="m.role === 'Administrator' ? 'visible' : 'hidden'">check</mat-icon>
+      <div class="vis-menu-item">
+        <span class="vis-title">Administrator</span>
+        <span class="vis-desc">Can view, edit, and manage members.</span>
+      </div>
+    </button>
+  </ng-template>
+</mat-menu>
+
+<mat-menu #membersMenu="matMenu" yPosition="below" xPosition="after" overlapTrigger="false" (opened)="onMembersMenuOpened()">
+  <div class="members-menu">
+    <div class="members-header">
+      <mat-icon>group</mat-icon>
+      <span style="margin-left: 8px;">Project members</span>
+    </div>
+    <div class="members-list">
+      @if ((members.length || 0) === 0) {
+        <div class="members-empty">No members</div>
+      } @else {
+        @for (m of members; track m.userId) {
+          <div class="member-item">
+            <mat-icon>person</mat-icon>
+            <div class="member-info">
+              <div class="member-name">
+                {{ m.username}}
+                @if (ownerId && ((m.userId || m.id) === ownerId)) { <strong>(Owner)</strong> }
+              </div>
+            </div>
+            <div style="flex: 1;"></div>
+            @if (!ownerId || ((m.userId || m.id) !== ownerId)) {
+              <button mat-icon-button [matMenuTriggerFor]="roleMenu" [matMenuTriggerData]="$any({member: m})">
+                <mat-icon>{{ (m.role === 'Administrator' || m.role === 'Owner') ? 'admin_panel_settings' : (m.role === 'Contributer' ? 'edit' : 'visibility') }}</mat-icon>
+              </button>
+            } @else {
+              <mat-icon>{{ (m.role === 'Owner') ? 'admin_panel_settings' : 'person' }}</mat-icon>
+            }
+            @if (canRemove(m)) {
+              <button mat-icon-button color="warn" (click)="removeMember(m)">
+                <mat-icon>person_remove</mat-icon>
+              </button>
+            }
+          </div>
+        }
+      }
     </div>
   </div>
-</ng-template>
+</mat-menu>

@@ -24,12 +24,17 @@
   <div 
     class="cards-container"
     cdkDropList
+    [id]="list.id"
     cdkDropListOrientation="vertical"
     [cdkDropListData]="cards"
+    [cdkDropListConnectedTo]="dropListIds"
     (cdkDropListDropped)="onCardDrop($event)">
     @for (card of cards; track card.id) {
       <app-card 
         [card]="card"
+        [projectId]="list.boardId"
+        [columnId]="list.id"
+        [allTags]="allTags"
         [cdkDragData]="card"
         cdkDrag
         (cardUpdated)="onCardUpdated()">
