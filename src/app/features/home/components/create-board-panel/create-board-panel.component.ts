@@ -45,9 +45,15 @@ export class CreateBoardPanelComponent {
 
   create(): void {
     if (!this.title.trim()) return;
-    const board = this.boardService.createBoard(this.title.trim(), this.selectedGradient);
-    this.closed.emit();
-    this.router.navigate(['/board', board.id]);
+    this.boardService.createBoardFromServer(this.title.trim(), this.selectedGradient).subscribe({
+      next: (board) => {
+        this.closed.emit();
+        this.router.navigate(['/board', board.id]);
+      },
+      error: (err) => {
+        console.error('Error creating board:', err);
+      }
+    });
   }
 
   cancel(): void {

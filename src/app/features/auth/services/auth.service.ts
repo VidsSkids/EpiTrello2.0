@@ -13,6 +13,7 @@ export class AuthService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   login(payload: LoginRequest): Observable<LoginResponse> {
+    console.log('API:login:req');
     return this.http
       .post<LoginResponse>(`${this.baseUrl}/login`, payload)
       .pipe(
@@ -20,6 +21,7 @@ export class AuthService {
           if (res?.token) {
             this.setToken(res.token);
           }
+          console.log('API:login:success');
         })
       );
   }
@@ -29,6 +31,7 @@ export class AuthService {
   }
 
   register(payload: RegisterRequest): Observable<RegisterResponse> {
+    console.log('API:register:req');
     return this.http
       .post<RegisterResponse>(`${this.baseUrl}/register`, payload)
       .pipe(
@@ -36,6 +39,7 @@ export class AuthService {
           if (res?.token) {
             this.setToken(res.token);
           }
+          console.log('API:register:success');
         })
       );
   }
@@ -46,6 +50,24 @@ export class AuthService {
 
   isAuthenticated(): boolean {
     return !!this.getToken();
+  }
+
+  isTokenValid(): boolean {
+    const token = this.getToken();
+    if (!token) return false;
+    const parts = token.split('.');
+    if (parts.length < 2) return false;
+    try {
+      // eslint-disable-next-line no-undef
+      if (typeof atob === 'undefined') return false;
+      const payload = JSON.parse(atob(parts[1]));
+      const exp = payload?.exp;
+      if (typeof exp !== 'number') return false;
+      const nowSec = Math.floor(Date.now() / 1000);
+      return exp > nowSec;
+    } catch {
+      return false;
+    }
   }
 
   getToken(): string | null {

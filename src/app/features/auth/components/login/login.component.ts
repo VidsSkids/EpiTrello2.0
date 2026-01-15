@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '../../services/auth.service';
+import { BoardService } from '@features/board/services/board.service';
 import { LoginRequest } from '../../models/auth';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
@@ -33,7 +34,7 @@ export class LoginComponent {
   loading = false;
   error: string | null = null;
 
-  constructor(private auth: AuthService, private router: Router, private route: ActivatedRoute) {}
+  constructor(private auth: AuthService, private router: Router, private route: ActivatedRoute, private boardService: BoardService) {}
 
   submit(): void {
     this.error = null;
@@ -42,8 +43,16 @@ export class LoginComponent {
     this.auth.login(payload).subscribe({
       next: () => {
         this.loading = false;
-        const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo');
-        this.router.navigate([redirectTo || '/']);
+        this.boardService.preloadWorkspaceData().subscribe({
+          next: () => {
+            const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo');
+            this.router.navigate([redirectTo || '/']);
+          },
+          error: () => {
+            const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo');
+            this.router.navigate([redirectTo || '/']);
+          }
+        });
       },
       error: (err) => {
         this.loading = false;

@@ -17,6 +17,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
 import { RouterOutlet } from '@angular/router';
 import { CreateBoardPanelComponent } from './components/create-board-panel/create-board-panel.component';
+import { AuthService } from '@features/auth/services/auth.service';
 
 @Component({
   selector: 'app-home',
@@ -48,10 +49,16 @@ export class HomeComponent implements OnInit {
   constructor(
     private boardService: BoardService,
     private dialog: MatDialog,
-    private router: Router
+    private router: Router,
+    private auth: AuthService
   ) {}
 
   ngOnInit(): void {
+    if (!this.auth.isTokenValid()) {
+      this.auth.logout();
+      this.router.navigate(['/login'], { queryParams: { redirectTo: '/' } });
+      return;
+    }
     this.boards$ = this.boardService.boards$;
   }
 

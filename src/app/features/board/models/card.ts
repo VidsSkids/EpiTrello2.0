@@ -1,11 +1,29 @@
+export interface ChecklistItem {
+  id: string;
+  content: string;
+  isDone: boolean;
+  dueDate?: number;
+  assignedTo?: string[];
+
+  _hover?: boolean;
+}
+
+export interface Checklist {
+  id: string;
+  title: string;
+  items: ChecklistItem[];
+  showAddItem?: boolean;
+  newChecklistItemContent?: string;
+}
+
 export interface Card {
   id: string;
   title: string;
   description?: string;
   listId: string;
   position: number;
-  labels?: string[];
-  dueDate?: Date;
+  tagIds?: string[];
+  assignedTo?: string[];
   createdAt: Date;
-  updatedAt: Date;
+  checklists?: Checklist[];
 }
