@@ -1,0 +1,34 @@
+@if (!editMode) {
+  <div class="card-container">
+    <mat-card (click)="startEdit()">
+      <mat-card-content>
+        <div class="card-title">{{ card.title }}</div>
+        @if (card.description) {
+          <div class="card-description">{{ card.description }}</div>
+        }
+      </mat-card-content>
+    </mat-card>
+  </div>
+}
+
+@if (editMode) {
+  <div class="card-edit-form">
+    <mat-form-field appearance="outline">
+      <mat-label>Title</mat-label>
+      <input matInput [(ngModel)]="editedTitle" placeholder="Enter card title" required>
+    </mat-form-field>
+    
+    <mat-form-field appearance="outline">
+      <mat-label>Description</mat-label>
+      <textarea matInput [(ngModel)]="editedDescription" placeholder="Enter description (optional)"></textarea>
+    </mat-form-field>
+    
+    <div class="form-actions">
+      <button mat-raised-button color="primary" (click)="saveCard()">Save</button>
+      <button mat-button (click)="cancelEdit()">Cancel</button>
+      <button mat-icon-button color="warn" (click)="deleteCard()" class="delete-button">
+        <mat-icon>delete</mat-icon>
+      </button>
+    </div>
+  </div>
+}
