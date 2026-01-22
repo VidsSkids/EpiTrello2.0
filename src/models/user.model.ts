@@ -11,17 +11,23 @@ const userSchema = new Schema({
     name: {
         type: String,
         required: true,
-        index: true
+        unique: true,
+        trim: true
     },
     email: {
         type: String,
-        required: true,
+        lowercase: true,
+        trim: true,
         unique: true,
-        index: true
+        sparse: true
+    },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true
     },
     password: {
         type: String,
-        required: false
     },
     provider: {
         type: String,
@@ -31,7 +37,6 @@ const userSchema = new Schema({
     },
     providerId: {
         type: String,
-        required: false
     }
 }, { timestamps: true });
 
