@@ -72,10 +72,41 @@ export class UserService {
     if (!match) throw new Error('Invalid credentials');
 
     const payload = { id: obj.uuid ?? (obj._id ? String(obj._id.toString()) : obj.id ?? ''), name: obj.name ?? '' };
-    const secret = process.env.JWT_SECRET || 'your_jwt_secret';
-    const token = jwt.sign(payload, secret, { expiresIn: '1h' });
+    const token = this.createJWTForUser(obj);
 
     return { token, id: payload.id };
+  }
+
+  async validateGoogleUser(googleProfile: {
+    email: string;
+    name: string;
+    providerId: string;
+  }) {
+    let user = await UserModel.findOne({ email: googleProfile.email });
+
+    if (!user) {
+      user = await UserModel.create({
+        name: googleProfile.name,
+        email: googleProfile.email,
+        provider: 'google',
+        providerId: googleProfile.providerId,
+      });
+    }
+
+    const obj = toPlain(user);
+    const token = this.createJWTForUser(obj);
+
+    return { token, id: obj.uuid ?? obj._id?.toString() };
+  }
+
+  createJWTForUser(user: any) {
+    const payload = {
+      id: user.uuid ?? user._id?.toString() ?? user.id ?? '',
+      name: user.name ?? '',
+    };
+
+    const secret = process.env.JWT_SECRET!;
+    return jwt.sign(payload, secret, { expiresIn: '1h' });
   }
 
   async deleteUser(id: string) {

@@ -1,10 +1,39 @@
 import express from 'express';
 import cors from 'cors';
 import { config } from 'dotenv';
+
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+
 import connectDB from './config/db';
 import authRoutes from './routes/auth.routes';
 import projectRoutes from './routes/project.routes';
 import { errorMiddleware } from './middlewares/error.middleware';
+
+passport.use(
+    new GoogleStrategy(
+        {
+            clientID: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            callbackURL: "/auth/google/callback",
+        },
+        async (_, __, profile, done) => {
+            try {
+                const email = profile.emails?.[0].value;
+
+                if (!email) {
+                    return done(new Error("No email from Google"), undefined);
+                }
+
+                // Store minimal profile data on request for use in controller
+                return done(null, profile);
+            } catch (err) {
+                done(err, undefined);
+            }
+        }
+    )
+);
+
 
 config();
 

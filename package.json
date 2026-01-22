@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "A trello backend system using Express.js and MongoDB.",
   "main": "src/server.ts",
+  "overrides": {
+    "tar": "^7.5.4"
+  },
   "scripts": {
     "start": "ts-node src/server.ts",
     "build": "tsc -p tsconfig.json",
@@ -26,9 +29,11 @@
     "dotenv": "^8.2.0",
     "eslint": "^8.0.0",
     "express": "^4.17.1",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.3",
     "madge": "^5.0.0",
     "mongoose": "^8.19.2",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "ts-prune": "^0.7.0",
     "uuid": "^8.3.2"
   },
@@ -38,6 +43,8 @@
     "@types/jest": "^26.0.24",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/mongoose": "^5.10.2",
+    "@types/passport": "^1.0.17",
+    "@types/passport-google-oauth20": "^2.0.17",
     "@types/supertest": "^6.0.3",
     "jest": "^30.2.0",
     "mongodb-memory-server": "^10.2.3",

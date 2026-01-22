@@ -19,7 +19,7 @@ class AuthController {
 
     async loginUser(req: Request, res: Response, next: NextFunction) {
         try {
-            const {token, id} = await this.userService.validateUser(req.body);
+            const { token, id } = await this.userService.validateUser(req.body);
             // set JWT in Authorization header for client convenience
             if (typeof token === 'string') {
                 res.setHeader('Authorization', `Bearer ${token}`);
@@ -34,6 +34,33 @@ class AuthController {
         try {
             await this.userService.deleteUser(req.params.id);
             res.status(204).send();
+        } catch (err: unknown) {
+            next(err);
+        }
+    }
+
+    async googleAuthCallback(req: Request, res: Response, next: NextFunction) {
+        try {
+            const user = req.user as { emails?: Array<{ value: string }>; displayName?: string; id?: string };
+            const email = user.emails?.[0].value;
+
+            if (!email) {
+                throw new Error('No email from Google');
+            }
+
+            const { token, id } = await this.userService.validateGoogleUser({
+                email,
+                name: user.displayName || email,
+                providerId: user.id || '',
+            });
+
+            if (typeof token === 'string') {
+                res.setHeader('Authorization', `Bearer ${token}`);
+            }
+
+            // Redirect to frontend with token
+            const frontendUrl = process.env.FRONTEND_GOOGLE_URL || 'http://localhost:3000';
+            res.redirect(`${frontendUrl}?token=${token}&id=${id}`);
         } catch (err: unknown) {
             next(err);
         }

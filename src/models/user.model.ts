@@ -11,12 +11,27 @@ const userSchema = new Schema({
     name: {
         type: String,
         required: true,
+        index: true
+    },
+    email: {
+        type: String,
+        required: true,
         unique: true,
         index: true
     },
     password: {
         type: String,
-        required: true
+        required: false
+    },
+    provider: {
+        type: String,
+        required: true,
+        enum: ['local', 'google'],
+        default: 'local'
+    },
+    providerId: {
+        type: String,
+        required: false
     }
 }, { timestamps: true });
 
