@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: Deploiement information
 
+    defaults:
+      run:
+        working-directory: backend
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,6 +23,7 @@ jobs:
         with:
           node-version: 20
           cache: "npm"
+          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -32,7 +37,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          source: "dist,package.json,package-lock.json"
+          source: "backend/dist,backend/package.json,backend/package-lock.json"
           target: ${{ secrets.APP_DIR }}
 
       - name: Install prod deps & restart app
@@ -43,7 +48,7 @@ jobs:
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
             export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
             cd ${{ secrets.APP_DIR }}
             npm ci --omit=dev
             pm2 restart epitrello || pm2 start npm --name epitrello -- run start-build
