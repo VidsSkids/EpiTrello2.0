@@ -1,0 +1,72 @@
+<div class="list-container">
+  <div class="list-header">
+    @if (!editingTitle) {
+      <div class="list-title" (click)="startEditingTitle()">
+        {{ list.title }}
+      </div>
+    }
+    @if (editingTitle) {
+      <div class="list-title-edit">
+        <input 
+          type="text" 
+          [(ngModel)]="editedTitle" 
+          (blur)="saveTitle()" 
+          (keyup.enter)="saveTitle()"
+          #titleInput
+          autofocus>
+      </div>
+    }
+    <button mat-icon-button class="list-menu-button" (click)="deleteList()">
+      <mat-icon>delete</mat-icon>
+    </button>
+  </div>
+  
+  <div 
+    class="cards-container"
+    cdkDropList
+    [id]="list.id"
+    cdkDropListOrientation="vertical"
+    [cdkDropListData]="cards"
+    [cdkDropListConnectedTo]="dropListIds"
+    (cdkDropListDropped)="onCardDrop($event)">
+    @for (card of cards; track card.id) {
+      <app-card 
+        [card]="card"
+        [projectId]="list.boardId"
+        [columnId]="list.id"
+        [allTags]="allTags"
+        [cdkDragData]="card"
+        cdkDrag
+        (cardUpdated)="onCardUpdated()">
+      </app-card>
+    }
+  </div>
+  
+  <div class="list-footer">
+    @if (!showNewCardForm) {
+      <div class="add-card-button">
+        <button mat-button (click)="showNewCardForm = true">
+          <mat-icon>add</mat-icon> Add a card
+        </button>
+      </div>
+    }
+    
+    @if (showNewCardForm) {
+      <div class="new-card-form">
+        <mat-form-field appearance="outline">
+          <textarea 
+            matInput 
+            placeholder="Enter a title for this card..." 
+            [(ngModel)]="newCardTitle"
+            (keyup.enter)="createCard()"></textarea>
+        </mat-form-field>
+        <div class="form-actions">
+          <button mat-raised-button color="primary" (click)="createCard()">Add Card</button>
+          <button mat-icon-button (click)="showNewCardForm = false">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

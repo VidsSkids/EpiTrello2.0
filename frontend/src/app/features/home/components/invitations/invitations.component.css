@@ -1,0 +1,96 @@
+.invitations-container {
+  width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.invitations-header {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  margin-left: 16px;
+}
+
+.invitations-header-icon {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+}
+
+.invitations-header-title {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--mat-sys-on-surface);
+}
+
+.section {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.section-title {
+  margin-left: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mat-sys-on-surface);
+}
+
+.tiles {
+  width: 100%;
+}
+
+.invitation-tile {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  background: var(--mat-sys-surface);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.tile-left {
+  display: flex;
+  align-items: center;
+}
+
+.tile-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.tile-title {
+  font-size: 14px;
+  color: var(--mat-sys-on-surface);
+}
+
+.tile-subtitle {
+  font-size: 12px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.tile-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
+.empty {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 12px;
+  padding: 8px 16px;
+}
+
+.error {
+  color: #c62828;
+  margin-top: 8px;
+}
+
+.loading {
+  color: var(--mat-sys-on-surface-variant);
+}
