@@ -7,15 +7,15 @@ on:
   push:
     branches: [backend-main]
 
-env:
-  DATABASE_URL: mongodb://mongo:password@141.95.167.31:5001/?authSource=admin
-  GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-  GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-  FRONTEND_GOOGLE_URL: http://localhost:3000/auth/google-callback
-
 jobs:
   test:
+    environment: Deploiement information
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: mongodb://mongo:password@141.95.167.31:5001/?authSource=admin
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      FRONTEND_GOOGLE_URL: http://localhost:3000/auth/google-callback
 
     defaults:
       run:
