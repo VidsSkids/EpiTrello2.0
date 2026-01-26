@@ -16,6 +16,7 @@ jobs:
       GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
       GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
       FRONTEND_GOOGLE_URL: http://localhost:3000/auth/google-callback
+      JWT_SECRET: this is a secret for tests only
 
     defaults:
       run:
