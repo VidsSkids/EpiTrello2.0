@@ -6,7 +6,8 @@ import { BoardsListComponent } from './features/home/components/boards-list/boar
 
 export const routes: Routes = [
     { path: 'home', redirectTo: '', pathMatch: 'full' },
-    { path: '', component: HomeComponent,
+    {
+        path: '', component: HomeComponent,
         children: [
             { path: '', component: TipCardComponent },
             { path: 'w/board', component: BoardsListComponent },
@@ -17,13 +18,17 @@ export const routes: Routes = [
     },
     {
         path: 'board/:id',
-        loadChildren: () => import('./features/board/board.routes').then(m => m.boardRoutes), 
+        loadChildren: () => import('./features/board/board.routes').then(m => m.boardRoutes),
         loadComponent: () => import('./features/board/components/board/board.component').then(m => m.BoardComponent),
         canActivate: [authGuard]
     },
     {
         path: 'login',
         loadComponent: () => import('./features/auth/components/login/login.component').then(m => m.LoginComponent)
+    },
+    {
+        path: 'auth/google-callback',
+        loadComponent: () => import('./features/auth/components/google-callback/google-callback.component').then(m => m.GoogleCallbackComponent)
     },
     {
         path: 'register',

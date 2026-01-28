@@ -34,7 +34,11 @@ export class LoginComponent {
   loading = false;
   error: string | null = null;
 
-  constructor(private auth: AuthService, private router: Router, private route: ActivatedRoute, private boardService: BoardService) {}
+  constructor(private auth: AuthService, private router: Router, private route: ActivatedRoute, private boardService: BoardService) { }
+
+  loginWithGoogle(): void {
+    window.location.href = `${this.auth.getApiUrl()}/auth/google`;
+  }
 
   submit(): void {
     this.error = null;

@@ -32,6 +32,6 @@ router.get('/ping', authMiddleware, (req: Request, res: Response) => {
 });
 
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-router.get("/google/callback", passport.authenticate("google", { session: false, failureRedirect: process.env.FRONTEND_LOGIN_URL, }), controller.googleAuthCallback);
+router.get('/google/callback', passport.authenticate("google", { session: false, failureRedirect: process.env.FRONTEND_LOGIN_URL, }), controller.googleAuthCallback);
 
 export default router;

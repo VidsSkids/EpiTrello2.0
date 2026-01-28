@@ -3,9 +3,9 @@ name: Backend Tests
 on:
   pull_request:
     types: [opened, reopened, synchronize]
-    branches: [backend-main]
+    branches: [backend-main, main]
   push:
-    branches: [backend-main]
+    branches: [backend-main, main]
 
 jobs:
   test:

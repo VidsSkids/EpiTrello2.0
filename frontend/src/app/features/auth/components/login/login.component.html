@@ -20,6 +20,8 @@
       </mat-form-field>
 
       <button mat-flat-button color="primary" [disabled]="loading" type="submit">Se connecter</button>
+      <button mat-flat-button color="primary" type="button" (click)="loginWithGoogle()">Connexion
+        Google</button>
       <span class="error" *ngIf="error">{{ error }}</span>
     </form>
 
