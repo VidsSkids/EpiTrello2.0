@@ -39,14 +39,20 @@ class AuthController {
         }
     }
 
-    async googleAuthCallback(req: Request, res: Response, next: NextFunction) {
+    googleAuthCallback = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
         try {
-            const user = req.user as { emails?: Array<{ value: string }>; displayName?: string; id?: string };
-            const email = user.emails?.[0].value;
+            const user = req.user as {
+                emails?: Array<{ value: string }>;
+                displayName?: string;
+                id?: string;
+            };
 
-            if (!email) {
-                throw new Error('No email from Google');
-            }
+            const email = user.emails?.[0].value;
+            if (!email) throw new Error('No email from Google');
 
             const { token, id } = await this.userService.validateGoogleUser({
                 email,
@@ -54,17 +60,12 @@ class AuthController {
                 providerId: user.id || '',
             });
 
-            if (typeof token === 'string') {
-                res.setHeader('Authorization', `Bearer ${token}`);
-            }
-
-            // Redirect to frontend with token
-            const frontendUrl = process.env.FRONTEND_GOOGLE_URL || 'http://localhost:3000';
+            const frontendUrl = process.env.FRONTEND_GOOGLE_URL!;
             res.redirect(`${frontendUrl}?token=${token}&id=${id}`);
-        } catch (err: unknown) {
+        } catch (err) {
             next(err);
         }
-    }
+    };
 }
 
 export default AuthController;
