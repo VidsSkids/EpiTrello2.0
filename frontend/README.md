@@ -1,59 +1,122 @@
-# EpiTrello
+# EpiTrello — Kanban
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.6.
+EpiTrello est une application Kanban moderne permettant d’organiser des projets sous forme de boards, listes et cartes. Elle intègre la gestion des membres, des invitations, des checklists et un partage de projet. L’interface est construite avec Angular Material et fonctionne côté client et SSR.
 
-## Development server
+## Fonctionnalités
+- Boards, listes et cartes avec édition du titre et réorganisation.
+- Checklists sur les cartes, tags et membres assignés.
+- Invitations et gestion des rôles des membres.
+- Partage de projet (dialog dédié).
+- Page Home avec bannière de bienvenue et liens rapides.
+- Authentification: Login, Register et “Continue with Google”.
+- Thème Material et textures (grid/pois) sur les pages.
 
-To start a local development server, run:
+## Stack technique
+- Angular 20 (standalone components, signals).
+- Angular Material (UI).
+- SSR via `@angular/build` (scripts fournis).
+- Tests unitaires/intégration avec Karma + Jasmine (configuration Brave).
 
+## Prérequis
+- Node.js 20+ (recommandé)
+- npm 10+
+- Optionnel: Brave Browser (pour exécuter les tests facilement) ou Chrome
+
+## Installation
 ```bash
+cd frontend
+npm install
+```
+
+## Développement
+```bash
+npm run start
+# ou
 ng serve
 ```
+- Ouvre http://localhost:4200/
+- Reload automatique sur modification des sources
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Build
+```bash
+npm run build
+```
+- Les artefacts sont générés dans `dist/`
 
-## Code scaffolding
+## SSR (Server-Side Rendering)
+```bash
+npm run build
+npm run serve:ssr:EpiTrello
+```
+- Lance le serveur SSR à partir de `dist/EpiTrello/server/server.mjs`
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Configuration API
+- Les services consomment l’API via `environment.apiURL`.
+- Fichiers d’environnement:
+  - `src/environments/environment.development.ts` (utilisé en dev)
+  - `src/environments/environment.ts` (prod, à compléter)
+- Exemple:
+```ts
+export const environment = {
+  production: false,
+  apiURL: 'http://YOUR_API_HOST/api'
+};
+```
+- L’authentification Google utilise l’endpoint `${environment.apiURL}/auth/google` côté backend.
 
+## Tests
+### Commandes
+```bash
+npm run test              # lance Karma avec Brave (configurée)
+npm run test -- --watch=false  # exécution unique (CI)
+```
+
+### Navigateur de test (Brave/Headless)
+- Karma est configuré pour utiliser Brave via `karma.conf.js`.
+- Mode headless:
+  - Windows PowerShell:
+    ```powershell
+    $env:KARMA_HEADLESS="true"; npm run test
+    ```
+  - CMD:
+    ```cmd
+    set KARMA_HEADLESS=true && npm run test
+    ```
+- Si Brave n’est pas détecté automatiquement, définis `CHROME_BIN`:
+  - Windows PowerShell:
+    ```powershell
+    $env:CHROME_BIN="C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"; npm run test
+    ```
+
+### Stratégie de tests “zoneless”
+- Les specs utilisent `provideZonelessChangeDetection()` pour éviter Zone.js.
+- Les composants/services testés requièrent souvent:
+  - `provideHttpClient()` (HTTP)
+  - `provideRouter([])` (Router/ActivatedRoute)
+  - Stubs pour `AuthService.getToken()` si besoin
+  - Pour les dialogs Material: `MatDialogRef` et `MAT_DIALOG_DATA`
+- Cette approche accélère les tests et limite les effets de bord.
+
+## Scripts npm
+```json
+{
+  "start": "ng serve",
+  "build": "ng build",
+  "test": "ng test",
+  "serve:ssr:EpiTrello": "node dist/EpiTrello/server/server.mjs"
+}
+```
+
+## Génération de composants
 ```bash
 ng generate component component-name
+ng generate --help   # liste des schémas disponibles
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Conventions
+- UI: Angular Material, styles cohérents avec le thème.
+- Tests: éviter les appels réseau; stubber les services; zoneless par défaut.
+- Sécurité: ne pas exposer de secrets dans les environnements frontend.
 
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## Ressources
+- Angular CLI: https://angular.dev/tools/cli
