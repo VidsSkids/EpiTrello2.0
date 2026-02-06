@@ -2,3 +2,24 @@
 
 html, body { height: 100%; }
 body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+
+.custom-dialog .mdc-dialog__surface {
+  border-radius: 4px !important;
+}
+
+.simple-button {
+  border-radius: 4px !important;
+  border: 1px solid #ccc !important;
+  padding: 4px 8px !important;
+  min-width: auto !important;
+  height: auto !important;
+  line-height: normal !important;
+}
+
+
+.simple-button:hover {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-color: #5d1919 !important;
+  cursor: pointer !important;
+}

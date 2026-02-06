@@ -51,7 +51,12 @@ export class RegisterComponent {
       error: (err) => {
         this.loading = false;
         this.error = err?.error?.message || "Échec de l'inscription";
+        console.error('API:register:error', err);
       }
     });
+  }
+  
+  loginWithGoogle(): void {
+    this.auth.loginWithGoogle();
   }
 }

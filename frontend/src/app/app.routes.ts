@@ -1,14 +1,13 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './features/auth/guards/auth.guard';
 import { HomeComponent } from './features/home/home.component';
-import { TipCardComponent } from './features/home/components/tip-card/tip-card.component';
 import { BoardsListComponent } from './features/home/components/boards-list/boards-list.component';
 
 export const routes: Routes = [
     { path: 'home', redirectTo: '', pathMatch: 'full' },
     { path: '', component: HomeComponent,
         children: [
-            { path: '', component: TipCardComponent },
+            // default child intentionally empty to show Home welcome
             { path: 'w/board', component: BoardsListComponent },
             { path: 'w/boards', component: BoardsListComponent },
             { path: 'w/invitations', loadComponent: () => import('./features/home/components/invitations/invitations.component').then(m => m.InvitationsComponent) }

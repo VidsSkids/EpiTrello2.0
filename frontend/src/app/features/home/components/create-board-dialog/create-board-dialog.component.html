@@ -6,6 +6,6 @@
       </mat-form-field>
     </div>
     <div mat-dialog-actions align="end">
-      <button mat-button (click)="onCancel()">Cancel</button>
-      <button mat-raised-button color="primary" [disabled]="!boardTitle" (click)="onSubmit()">Create</button>
+      <button mat-stroked-button class="simple-button" (click)="onCancel()">Cancel</button>
+      <button mat-stroked-button class="simple-button" color="primary" [disabled]="!boardTitle" (click)="onSubmit()">Create</button>
     </div>

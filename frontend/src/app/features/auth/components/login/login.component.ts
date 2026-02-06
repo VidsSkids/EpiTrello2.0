@@ -48,7 +48,8 @@ export class LoginComponent {
             const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo');
             this.router.navigate([redirectTo || '/']);
           },
-          error: () => {
+          error: (err) => {
+            console.error('API:preloadWorkspaceData:error', err);
             const redirectTo = this.route.snapshot.queryParamMap.get('redirectTo');
             this.router.navigate([redirectTo || '/']);
           }
@@ -57,7 +58,12 @@ export class LoginComponent {
       error: (err) => {
         this.loading = false;
         this.error = err?.error?.message || 'Échec de la connexion';
+        console.error('API:login:error', err);
       }
     });
+  }
+  
+  loginWithGoogle(): void {
+    this.auth.loginWithGoogle();
   }
 }

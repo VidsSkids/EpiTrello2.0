@@ -1,4 +1,4 @@
-import { Component, OnInit, TemplateRef } from '@angular/core'
+import { Component, ElementRef, OnInit, TemplateRef, ViewChild, ChangeDetectorRef } from '@angular/core'
 import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { MatButtonModule } from '@angular/material/button'
@@ -58,6 +58,7 @@ export class BoardComponent implements OnInit {
   updatedAt$!: Observable<Date | null>;
   refreshProject$ = new Subject<void>();
 
+
   newBoardTitle = '';
   newListTitle = '';
   showNewBoardForm = false;
@@ -66,8 +67,9 @@ export class BoardComponent implements OnInit {
   members: any[] = [];
   isOwner = false;
 
+  @ViewChild('titleInput') titleInput!: ElementRef<HTMLInputElement>;
+  editedTitle = '';
   editingTitle = false;
-  tempTitle = '';
   favorite = false;
   visibility: 'private' | 'public' | 'workspace' | 'Workspace' = 'private';
   currentView: 'kanban' | 'calendar' | 'timeline' = 'kanban';
@@ -77,6 +79,7 @@ export class BoardComponent implements OnInit {
   isLoading: boolean = true;
   ownerId: string | null = null;
   myRole: string | undefined;
+  currentUserId: string | null = null;
 
 
   onListDrop(event: CdkDragDrop<any[]>): void {
@@ -98,11 +101,13 @@ export class BoardComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private auth: AuthService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.boards$ = of([]);
+    this.currentUserId = this.getUserId();
 
     const id$ = this.route.paramMap.pipe(map(pm => pm.get('id')));
     const parentId$ = this.route.parent ? this.route.parent.paramMap.pipe(map(pm => pm.get('id'))) : of(null);
@@ -181,12 +186,14 @@ export class BoardComponent implements OnInit {
         this.isOwner = uid ? ownerId === uid : false;
       }
       this.invitations = project?.invitations || [];
+      this.editedTitle = project?.name || 'Untitled';
     });
 
     this.projectMembers$.subscribe(members => {
       if (!members) return;
       this.members = members.map(m => ({ userId: m.userId, username: m.username, role: m.role}));
     });
+
   }
 
 
@@ -231,11 +238,16 @@ export class BoardComponent implements OnInit {
   deleteBoard(event: Event, boardId: string): void {
     event.stopPropagation();
     if (confirm('Are you sure you want to delete this board?')) {
-      this.boardService.deleteBoard(boardId);
-      const currentId = this.route.snapshot.paramMap.get('id') || this.route.parent?.snapshot.paramMap.get('id');
-      if (currentId === boardId) {
-        this.router.navigate(['/']);
-      }
+      this.boardService.deleteProject(boardId).subscribe({
+        next: () => {
+          this.boardService.deleteBoard(boardId);
+          const currentId = this.route.snapshot.paramMap.get('id') || this.route.parent?.snapshot.paramMap.get('id');
+          if (currentId === boardId) {
+            this.router.navigate(['/']);
+          }
+        },
+        error: (err) => console.error(`Failed to delete board ${boardId}`, err)
+      });
     }
   }
 
@@ -299,13 +311,15 @@ export class BoardComponent implements OnInit {
     });
   }
 
-  startEditTitle(board: BoardModel): void {
-    this.editingTitle = true;
-    this.tempTitle = board.title;
+  toggleTitleEdit(editing: boolean): void {
+    this.editingTitle = editing;
+    if (editing) {
+      setTimeout(() => this.titleInput.nativeElement.focus());
+    }
   }
 
   saveTitle(board: BoardModel): void {
-    const name = (this.tempTitle || '').trim();
+    const name = (this.editedTitle || '').trim();
     if (!name) { this.editingTitle = false; return; }
     const updated: BoardModel = { ...board, title: name };
     this.boardService.updateBoard(updated);
@@ -318,69 +332,14 @@ export class BoardComponent implements OnInit {
     });
   }
 
-  toggleFavorite(board: BoardModel): void {
-    const fav = !this.favorite;
-    this.favorite = fav;
-    const updated: BoardModel = { ...board, favorite: fav };
-    this.boardService.updateBoard(updated);
-    this.currentBoardId$.subscribe(id => {
-      if (!id) return;
-      this.boardService.updateProject(id, { favorite: fav }).subscribe({
-        next: () => console.log('API:updateProject:favorite:success', { projectId: id, favorite: fav }),
-        error: (err) => console.error('API:updateProject:favorite:error', { projectId: id, favorite: fav, err })
-      });
-    });
-  }
-
-  setVisibility(vis: 'private' | 'public' | 'workspace' | 'Workspace'): void {
-    this.visibility = vis;
-    this.currentBoard$.pipe(take(1)).subscribe(board => {
-      if (!board) return;
-      const updated: BoardModel = { ...board, visibility: vis };
-      this.boardService.updateBoard(updated);
-      this.boardService.updateProject(board.id, { visibility: vis }).subscribe({
-        next: () => console.log('API:updateProject:visibility:success', { projectId: board.id, visibility: vis }),
-        error: (err) => console.error('API:updateProject:visibility:error', { projectId: board.id, visibility: vis, err })
-      });
-    });
-  }
-
   openShareDialog(tpl: TemplateRef<any>): void {
     this.currentBoardId$.subscribe(id => {
       if (!id) return;
-      this.inviteError = null;
-      this.boardService.getProject(id).subscribe({
-        next: (p) => {
-          const project = p?.project || p;
-          this.invitations = project?.invitations || [];
-          if (project?.ownerId) {
-            this.ownerId = project.ownerId;
-            const uid = this.getUserId();
-            this.isOwner = uid ? this.ownerId === uid : false;
-          }
-          this.boardService.getProjectMembers(id).subscribe({
-            next: (list) => {
-              this.members = list || [];
-              if (this.ownerId) {
-                const hasOwner = (this.members || []).some(m => (m.userId || m.id) === this.ownerId);
-                if (!hasOwner) {
-                  this.members = [...this.members, { id: this.ownerId, userId: this.ownerId, role: 'Administrator' }];
-                }
-              }
-              console.log('API:getProjectMembers:success', { projectId: id, count: (this.members || []).length });
-              this.dialog.open(tpl, { width: '640px' });
-            },
-            error: (err) => { console.error('API:getProjectMembers:error', { projectId: id, err }); this.members = []; this.dialog.open(tpl, { width: '640px' }); }
-          });
-        },
-        error: (err) => {
-          console.error('API:getProject:error', { projectId: id, err });
-          this.invitations = [];
-          this.boardService.getProjectMembers(id).subscribe({
-            next: (list) => { console.log('API:getProjectMembers:success', { projectId: id, count: (list || []).length }); this.members = list || []; this.dialog.open(tpl, { width: '640px' }); },
-            error: (err2) => { console.error('API:getProjectMembers:error', { projectId: id, err: err2 }); this.members = []; this.dialog.open(tpl, { width: '640px' }); }
-          });
-        }
+      this.dialog.open(tpl, {
+        width: '60%',
+        maxWidth: 'none',
+        height: '80%',
+        panelClass: 'custom-dialog'
       });
     });
   }
@@ -397,8 +356,8 @@ export class BoardComponent implements OnInit {
       this.boardService.inviteMember(id, nm).subscribe({
         next: () => {
           this.boardService.getProject(id).subscribe({
-            next: (p) => { const project = p?.project || p; this.invitations = project?.invitations || []; },
-            error: () => {}
+            next: (p) => { const project = p?.project || p; this.invitations = project?.invitations || []; this.cdr.detectChanges(); },
+            error: (err) => console.error('API:getProject:error', { projectId: id, err })
           });
           this.inviteError = null;
           console.log('API:inviteMember:success', { projectId: id, name: nm });
@@ -411,19 +370,19 @@ export class BoardComponent implements OnInit {
   acceptInvitation(invitation: any): void {
     this.currentBoardId$.pipe(take(1)).subscribe(id => {
       if (!id || !invitation?.id) return;
-      this.boardService.acceptInvitation(id, invitation.id).subscribe({
+      this.boardService.acceptInvitation(id).subscribe({
         next: () => {
           this.boardService.getProject(id).subscribe({
-            next: (p) => { const project = p?.project || p; this.invitations = project?.invitations || []; },
-            error: () => {}
+            next: (p) => { const project = p?.project || p; this.invitations = project?.invitations || []; this.cdr.detectChanges(); },
+            error: (err: any) => console.error('API:getProject:error', { projectId: id, err })
           });
           this.boardService.getProjectMembers(id).subscribe({
             next: (list) => (this.members = list || []),
-            error: () => {}
+            error: (err: any) => console.error('API:getProjectMembers:error', { projectId: id, err })
           });
           console.log('API:acceptInvitation:success', { projectId: id, invitationId: invitation.id });
         },
-        error: (err) => console.error('API:acceptInvitation:error', { projectId: id, invitationId: invitation.id, err })
+        error: (err: any) => console.error('API:acceptInvitation:error', { projectId: id, invitationId: invitation.id, err })
       });
     });
   }
@@ -431,15 +390,15 @@ export class BoardComponent implements OnInit {
   revokeInvitation(invitation: any): void {
     this.currentBoardId$.pipe(take(1)).subscribe(id => {
       if (!id || !invitation?.id) return;
-      this.boardService.cancelInvitation(id, invitation.id).subscribe({
+      this.boardService.revokeInvitation(id).subscribe({
         next: () => {
           this.boardService.getProject(id).subscribe({
-            next: (p) => { const project = p?.project || p; this.invitations = project?.invitations || []; },
-            error: () => {}
+            next: (p) => { const project = p?.project || p; this.invitations = project?.invitations || []; this.cdr.detectChanges(); },
+            error: (err: any) => console.error('API:getProject:error', { projectId: id, err })
           });
           console.log('API:revokeInvitation:success', { projectId: id, invitationId: invitation.id });
         },
-        error: (err) => console.error('API:revokeInvitation:error', { projectId: id, invitationId: invitation.id, err })
+        error: (err: any) => console.error('API:revokeInvitation:error', { projectId: id, invitationId: invitation.id, err })
       });
     });
   }
@@ -454,7 +413,7 @@ export class BoardComponent implements OnInit {
         next: () => {
           this.boardService.getProjectMembers(id).subscribe({
             next: (list) => (this.members = list || []),
-            error: () => {}
+            error: (err) => console.error('API:getProjectMembers:error', { projectId: id, err })
           });
           console.log('API:updateMemberRole:success', { projectId: id, userId: uid, role });
         },
@@ -462,7 +421,7 @@ export class BoardComponent implements OnInit {
           console.error('API:updateMemberRole:error', { projectId: id, userId: uid, role, err });
           this.boardService.getProjectMembers(id).subscribe({
             next: (list) => (this.members = list || []),
-            error: () => {}
+            error: (err) => console.error('API:getProjectMembers:error', { projectId: id, err })
           });
         }
       });
@@ -486,13 +445,38 @@ export class BoardComponent implements OnInit {
         next: () => {
           this.boardService.getProjectMembers(id).subscribe({
             next: (list) => (this.members = list || []),
-            error: () => {}
+            error: (err) => console.error('API:getProjectMembers:error', { projectId: id, err })
           });
           console.log('API:removeMember:success', { projectId: id, userId: uid });
         },
         error: (err) => console.error('API:removeMember:error', { projectId: id, userId: uid, err })
       });
     });
+  }
+
+  deleteAccount(): void {
+    const idStr = this.getUserId();
+    const idNum = idStr ? Number(idStr) : NaN;
+    if (!idStr || Number.isNaN(idNum)) {
+      console.error('API:deleteUser:error', { reason: 'invalid_user_id', userId: idStr });
+      return;
+    }
+    if (!confirm('Êtes-vous sûr de vouloir supprimer votre compte ?')) return;
+    this.auth.deleteUser(idNum).subscribe({
+      next: () => {
+        console.log('API:deleteUser:success', { userId: idNum });
+        this.auth.logout();
+        this.router.navigate(['/login']);
+      },
+      error: (err) => {
+        console.error('API:deleteUser:error', { userId: idNum, err });
+      }
+    });
+  }
+
+  logoutUser(): void {
+    this.auth.logout();
+    this.router.navigate(['/login']);
   }
 
   private getUserId(): string | null {

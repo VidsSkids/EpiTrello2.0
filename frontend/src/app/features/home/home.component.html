@@ -4,9 +4,23 @@
     <a matButton class="toolbar-title">EpiTrello</a>
   </div>
   <div class="toolbar-profile-container">
-    <button matButton class="toolbar-profile">
+    <button mat-button [matMenuTriggerFor]="profileMenu" class="toolbar-profile">
       <mat-icon>account_circle</mat-icon>
     </button>
+    <mat-menu #profileMenu="matMenu" >
+      <div class="profile-info" style="padding: 0 16px 8px;">
+    <p><strong>User:</strong> {{ user?.name }}</p>
+      </div>
+      <mat-divider></mat-divider>
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Logout</span>
+      </button>
+      <button mat-menu-item (click)="deleteAccount()" color="warn">
+        <mat-icon>delete_forever</mat-icon>
+        <span>Delete account</span>
+      </button>
+    </mat-menu>
   </div>
 </mat-toolbar>
 
@@ -35,12 +49,25 @@
             </mat-list-item>
             <mat-list-item button class="left-sidenav-btn" routerLink="w/invitations" routerLinkActive="active">
                 <mat-icon matListItemIcon class="left-sidenav-btn-icon">mail</mat-icon>
-                <div matListItemTitle class="left-sidenav-btn-title">Invitation</div>
+                <div matListItemTitle class="left-sidenav-btn-title">Invitations</div>
             </mat-list-item>
         </mat-nav-list>
     </div>
 
     <div class="main-container">
+        @if (isHomeSection) {
+        <mat-card class="welcome-banner" appearance="raised">
+          <div class="welcome-left">
+            <div class="welcome-title">Welcome{{ user?.name ? ', ' + user?.name : '' }}!</div>
+            <div class="welcome-sub">Create your first board and organize everything in one place.</div>
+            <div class="welcome-actions">
+            </div>
+          </div>
+          <div class="welcome-right">
+            <mat-icon class="welcome-illustration">emoji_objects</mat-icon>
+          </div>
+        </mat-card>
+        }
 
         <router-outlet></router-outlet>
     </div>

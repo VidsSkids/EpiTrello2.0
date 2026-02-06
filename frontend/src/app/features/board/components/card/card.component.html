@@ -1,31 +1,57 @@
 <div class="card-container">
   <mat-card (click)="startEdit()">
     <mat-card-content>
-      <div class="card-labels">
-        @for (label of cardLabels; track label.id) {
-          <div class="card-label" [style.backgroundColor]="label.color"></div>
-        }
-      </div>
       <div class="card-title">{{ card.title }}</div>
       @if (card.description) {
-        <div class="card-description">{{ card.description }}</div>
+        <div class="card-description">
+          <mat-icon>subject</mat-icon>
+        </div>
       }
+      <div style="height: 8px;"></div>
+      <div class="card-tags">
+          @for (tag of tags; track tag.id) {
+              <div class="card-tag-pill" [style.backgroundColor]="tag.color" [style.color]="getContrastingTextColor(tag.color)">
+                {{ tag.name }}
+              </div>
+          }
+        </div>
+      <div class="card-footer">
+        
+        @if (checklistsCompletionSummary) {
+          <div class="card-checklists-summary">
+            <mat-icon [class.completed]="checklistsCompletionSummary === '100%'">checklist</mat-icon>
+            <span>{{ checklistsCompletionSummary }}</span>
+          </div>
+        }
+      </div>
     </mat-card-content>
   </mat-card>
 </div>
 
+
+
+
+
+
+
+
 <ng-template #editDialog>
-  <h2 mat-dialog-title>Edit Card</h2>
+  <div class="dialog-header">
+    <h2 mat-dialog-title>Edit Card</h2>
+    <button style="margin-right: 24px;" mat-icon-button align="end" mat-dialog-close="cancel" (click)="cancelEdit()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
   <div mat-dialog-content class="card-editor">
     <div class="editor-left">
       @if (!editingTitle) {
-        <div class="card-title editable" (click)="toggleTitleEdit(true)">
+        <div class="edit-card-title" style="font-weight: bold;" (click)="toggleTitleEdit(true)">
           {{ editedTitle }}
         </div>
       }
       @if (editingTitle) {
-        <div class="card-title-edit">
-           <input
+        <div class="edit-card-title-edit">
+           <input 
               #titleInput
               type="text"
               [(ngModel)]="editedTitle"
@@ -36,120 +62,196 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Description</mat-label>
-        <textarea matInput [(ngModel)]="editedDescription" (blur)="saveDescriptionInline()" placeholder="Enter description (optional)"></textarea>
+        <textarea matInput
+                  class="description-textarea"
+                  [(ngModel)]="editedDescription"
+                  (blur)="saveDescriptionInline()"
+                  placeholder="Enter description (optional)"
+                  cdkTextareaAutosize
+                  cdkAutosizeMinRows="5"
+                  cdkAutosizeMaxRows="5"></textarea>
       </mat-form-field>
-      
-      @for (cl of checklists; track cl.id) {
-        <div class="checklist-block">
-          <div class="checklist-header">
-            <mat-icon color="primary">check_box</mat-icon>
-            <input class="checklist-title-input" type="text" [(ngModel)]="cl.title" (blur)="updateChecklistTitle(cl)" (keyup.enter)="updateChecklistTitle(cl)">
-            <button mat-stroked-button color="warn" class="checklist-delete" (click)="deleteChecklist(cl)">Delete</button>
-          </div>
-          <div class="checklist-progress-row">
-            <div class="checklist-progress-text">{{ getChecklistCompletion(cl) }}%</div>
-            <mat-progress-bar mode="determinate" [value]="getChecklistCompletion(cl)"></mat-progress-bar>
-          </div>
-          <div class="checklist-items">
-            @for (it of cl.items; track (it.id || $index)) {
-              <div class="checklist-item-row" (mouseenter)="it._hover = true" (mouseleave)="it._hover = false">
-                <mat-checkbox [checked]="it.isDone" (change)="toggleChecklistItem(cl, it, $event.checked)"></mat-checkbox>
-                <input class="checklist-item-title-input" type="text" [(ngModel)]="it.content" (blur)="updateChecklistItem(cl, it)" (keyup.enter)="updateChecklistItem(cl, it)">
-                @if (it._hover) {
-                  <button mat-icon-button color="warn" (click)="deleteChecklistItem(cl, it)" aria-label="Delete item">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                }
+
+      @if (tags.length > 0) {
+        <h3>Tags</h3>
+        <div class="tags-list">
+          @for (tag of tags; track tag.id) {
+            <div class="tag-item-container">
+              <div class="card-tag-pill" [style.backgroundColor]="tag.color" [style.color]="getContrastingTextColor(tag.color)">
+                {{ tag.name }}
               </div>
-            }
-            @if (!cl.showAddItem) {
-              <button mat-stroked-button (click)="cl.showAddItem = true">Ajouter un élément</button>
-            }
-            @if (cl.showAddItem) {
-              <div class="checklist-add-item">
-                <input
-                  #newItemInput
-                  class="checklist-new-item-input"
-                  type="text"
-                  placeholder="Ajouter un élément"
-                  [(ngModel)]="cl.newChecklistItemContent"
-                  (keyup.enter)="addChecklistItem(cl); cl.showAddItem = false">
-                <div class="form-buttons">
-                  <button mat-stroked-button color="primary" (click)="addChecklistItem(cl); cl.showAddItem = false">Ajouter</button>
-                  <button mat-stroked-button (click)="cl.showAddItem = false">Annuler</button>
-                </div>
-              </div>
-            }
-          </div>
+              <button class="simple-button" (click)="detachTag(tag)">
+                detach
+              </button>
+            </div>
+          }
         </div>
       }
-    </div>
 
-    <div class="editor-right">
-      <button class="editor-action-button" type="button" [matMenuTriggerFor]="labelsMenu" #labelsTrigger="matMenuTrigger" (click)="loadProjectTags()">
-        <mat-icon>label</mat-icon>
-        <span>Labels</span>
-      </button>
-      <button class="editor-action-button" type="button" [matMenuTriggerFor]="checklistMenu">
-        <mat-icon>checklist</mat-icon>
-        <span>Checklist</span>
-      </button>
-
-      <mat-menu #labelsMenu="matMenu" hasBackdrop class="no-scroll-menu">
-        <div class="labels-menu" [ngClass]="labelsDensity" (click)="$event.stopPropagation()">
-          <div class="labels-menu-header">
-            <div class="labels-menu-title">Tags</div>
-          </div>
-
-          <div class="labels-section-title">tags</div>
-          <div class="labels-list">
-            @for (tag of tags; track tag.id) {
-              <div class="label-item">
-                <mat-checkbox [checked]="tag.attached" (change)="toggleTagAttachment(tag, $event.checked)"></mat-checkbox>
-                <div class="label-pill" [style.background]="tag.color || '#e0e0e0'" [style.color]="getContrastingTextColor(tag.color)">
-                  {{ tag.name }}
+      @if (checklists.length > 0) {
+        <h3>Checklists</h3>
+        <div class="checklists-list">
+          @for (checklist of checklists; track checklist.id) {
+            <div class="checklist-item-container">
+              @if (editingChecklistId === checklist.id) {
+                <div class="edit-card-title-edit">
+                  <input type="text"
+                    #titleInput
+                    [(ngModel)]="editedChecklistTitle"
+                    (blur)="saveChecklistTitle(checklist)"
+                    (keyup.enter)="saveChecklistTitle(checklist)"
+                    (keyup.escape)="editingChecklistId = null">
                 </div>
-                <button mat-icon-button (click)="editTag(tag)" aria-label="Edit label">
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button mat-icon-button color="warn" (click)="deleteTag(tag)" aria-label="Delete label">
-                  <mat-icon>delete</mat-icon>
-                </button>
+              } @else {
+                <div class="checklist-title" style="font-weight: bold;" (click)="startEditChecklist(checklist)">{{ checklist.title }}</div>
+              }
+              <div class="checklist-items">
+                @for (item of checklist.items; track item.id) {
+                    <div class="checklist-item">
+                      <mat-checkbox [checked]="item.isChecked" (change)="toggleChecklistItem(checklist, item, $event.checked)"></mat-checkbox>
+                      @if (editingItemId === item.id) {
+                        <div class="edit-item-content">
+                          <input type="text"
+                                 [(ngModel)]="editedItemContent"
+                                 (blur)="saveItemContent(checklist, item)"
+                                 (keyup.enter)="saveItemContent(checklist, item)"
+                                 (keyup.escape)="editingItemId = null"
+                                 cdkFocusInitial>
+                        </div>
+                      } @else {
+                        <span style="width: 100%;" (click)="startEditItem(item)">{{ item.content }}</span>
+                      }
+                      <button mat-icon-button (click)="deleteChecklistItem(checklist, item)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </div>
+                  }
               </div>
-            }
-          </div>
 
-          <div class="labels-actions">
-            <button mat-stroked-button color="primary" (click)="showCreateTagForm = true; $event.stopPropagation()">Créer un label</button>
-          </div>
-
-          @if (showCreateTagForm) {
-            <div class="create-tag-form">
-              <input type="text" [(ngModel)]="newTagName" placeholder="Nom du label">
-              <input type="color" [(ngModel)]="newTagColor">
-              <div class="form-buttons">
-                <button mat-stroked-button color="primary" (click)="createTag(); $event.stopPropagation()">Ajouter</button>
-                <button mat-stroked-button (click)="showCreateTagForm = false; $event.stopPropagation()">Annuler</button>
+              <div class="add-checklist-item-section">
+                @if (!checklist.showAddItem) {
+                  <div style="display: flex; flex-direction: row; align-items: center; gap: 8px; justify-content: space-between;">
+                  <button class="simple-button" style="display:flex; align-items: center; gap: 8px;" (click)="checklist.showAddItem = true">
+                    <mat-icon>add</mat-icon> Add an item
+                  </button>
+                  <button class="simple-button" style="display:flex; align-items: center; gap: 8px;" (click)="deleteChecklist(checklist)">
+                    <mat-icon>delete</mat-icon> Delete
+                  </button>
+                  </div>
+                } @else {
+                  <div class="create-tag-form">
+                    <input type="text" [(ngModel)]="checklist.newChecklistItemContent" placeholder="Enter item content" (keyup.enter)="addChecklistItem(checklist)">
+                    <div class="form-buttons">
+                      <button class="simple-button" color="primary" (click)="addChecklistItem(checklist)" [disabled]="!checklist.newChecklistItemContent">Add</button>
+                      <button class="simple-button" (click)="checklist.showAddItem = false">Cancel</button>
+                    </div>
+                  </div>
+                }
               </div>
             </div>
           }
         </div>
-      </mat-menu>
-      
-      <mat-menu #checklistMenu="matMenu" hasBackdrop class="no-scroll-menu">
-        <div class="checklist-menu" (click)="$event.stopPropagation()">
-          <div class="checklist-menu-header">Add checklist</div>
-          <div class="checklist-menu-body">
-            <input type="text" [(ngModel)]="newChecklistTitle" placeholder="Title">
-            <button mat-stroked-button color="primary" (click)="addChecklist(); $event.stopPropagation()">Add</button>
+      }
+
+    </div>
+
+    <div class="editor-right">
+
+      <div class="editor-right-section">
+        <div class="create-tag-form">
+
+          @if (showCreateTagForm) {
+              @if (selectedTag === null) {
+              <div style="font-size: 14px; font-weight: bold; padding: 8px 0;">Create a tag</div>
+              <div class="edit-tag-name" style="width: 100%;">
+                <input type="text" style="width: 100%; box-sizing: border-box;"
+                        [(ngModel)]="newTagName"
+                        placeholder="Tag name..."
+                        cdkFocusInitial>
+              </div>
+              <div style="display: flex; align-items: center; justify-content:space-between">
+                <input type="color" [(ngModel)]="newTagColor">
+                <div class="form-buttons">
+                  <button class="simple-button" color="primary" (click)="createTag(); $event.stopPropagation()">Add</button>
+                  <button class="simple-button" (click)="showCreateTagForm = false; $event.stopPropagation()">Cancel</button>
+                </div>
+              </div>
+            }
+              <div class="existing-tag-list">
+              @if (selectedTag !== null) {
+
+              <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+              <div style="font-size: 14px; font-weight: bold; padding: 8px 0;">Edit tag</div>
+
+                  <div class="edit-tag-name" style="width: 100%;">
+                    <input type="text" style="width: 100%; box-sizing: border-box;"
+                            [(ngModel)]="editedTagName"
+                            placeholder="Tag name..."
+                            cdkFocusInitial>
+                  </div>
+                  <div style="width: 100%; display: flex; flex-direction: row; gap: 8px; justify-content:space-between">
+                    <input type="color" [(ngModel)]="selectedTag.color">
+                    <div class="form-buttons">
+                      <button class="simple-button" (click)="atachTag({id: selectedTag._id, name: selectedTag.name, color: selectedTag.color})">attach</button>
+                      <button class="simple-button" (click)="saveTag()">save</button>
+                      <button class="simple-button" (click)="deleteTag({id: selectedTag._id, name: selectedTag.name, color: selectedTag.color})">delete</button>
+                      <button class="simple-button" (click)="selectedTag = null">cancel</button>
+
+                    </div>
+                  </div>
+                </div>
+              } @else {
+                @if (allTags.length > 0) {
+                <div style="width: 100%; flex-direction: column;">
+                <div style="font-size: 14px; font-weight: bold; padding: 8px 0;">Available tags</div>
+                @for (tag of allTags; track tag._id) {
+                  <div class="tag-item-container">
+                      <div class="card-tag-pill" [style.backgroundColor]="tag.color" [style.color]="getContrastingTextColor(tag.color)" (click)="startEditTag(tag)">
+                        {{ tag.name }}
+                      </div>
+                  </div>
+                }
+                </div>
+              }
+              }
+                </div>
+          } @else {
+            <div class="tags-actions">
+              <button class="simple-button" color="primary" (click)="showCreateTagForm = true; $event.stopPropagation()">Create a tag</button>
+            </div>
+          }
+      </div>
+
+      <div class="add-checklist-section">
+        @if (!showNewChecklistForm) {
+          <button class="checklist-action simple-button" (click)="showNewChecklistForm = true">
+            Add Checklist
+          </button>
+        } @else {
+          <div class="new-checklist-form" style="width: 100%;">
+            <input type="text" style="width: 100%; box-sizing: border-box;"
+                   [(ngModel)]="newChecklistTitle"
+                   placeholder="Enter checklist title"
+                   (keyup.enter)="addChecklist()"
+                   (keyup.escape)="showNewChecklistForm = false; newChecklistTitle = ''"
+                   cdkFocusInitial>
+            <div class="form-actions" style="width: 100%; display: flex; justify-content: flex-end; gap: 8px;">
+              <button class="simple-button" color="primary" (click)="addChecklist()" [disabled]="!newChecklistTitle">Add</button>
+              <button class="simple-button" (click)="showNewChecklistForm = false">Cancel</button>
+            </div>
           </div>
-        </div>
-      </mat-menu>
+        }
+      </div>
+
+
+      </div>
+
+      
+
     </div>
   </div>
   <div mat-dialog-actions align="end">
-    <button mat-button mat-dialog-close="cancel" (click)="cancelEdit()">Cancel</button>
-    <button mat-icon-button color="warn" class="delete-button" mat-dialog-close="delete" aria-label="Delete">
+    <button mat-icon-button color="warn" mat-dialog-close="delete" aria-label="Delete">
       <mat-icon>delete</mat-icon>
     </button>
   </div>

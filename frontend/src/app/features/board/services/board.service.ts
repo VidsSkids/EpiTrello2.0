@@ -299,7 +299,7 @@ export class BoardService {
     cardId: string,
     checklistId: string,
     itemId: string,
-    changes: { content?: string; isDone?: boolean; dueDate?: number; assignedTo?: any[] }
+    changes: { content?: string; isChecked?: boolean; dueDate?: number; assignedTo?: string[] }
   ): Observable<any> {
     console.log('API:updateChecklistItem:req', { projectId, columnId, cardId, checklistId, itemId, changes });
     return this.http.patch(
@@ -322,14 +322,19 @@ export class BoardService {
     return this.http.post(`${this.baseUrl}/projects/${projectId}/invite`, { name }, this.getAuthOptions());
   }
 
-  acceptInvitation(projectId: string, invitationId: string): Observable<any> {
-    console.log('API:acceptInvitation:req', { projectId, invitationId });
-    return this.http.post(`${this.baseUrl}/projects/${projectId}/accept`, { invitationId }, this.getAuthOptions());
+  acceptInvitation(projectId: string): Observable<any> {
+    console.log('API:acceptInvitation:req', { projectId });
+    return this.http.post(`${this.baseUrl}/projects/${projectId}/accept`, this.getAuthOptions());
   }
 
-  cancelInvitation(projectId: string, invitationId: string): Observable<any> {
-    console.log('API:revokeInvitation:req', { projectId, invitationId });
-    return this.http.post(`${this.baseUrl}/projects/${projectId}/revokeInvitation`, { invitationId }, this.getAuthOptions());
+  declineInvitation(projectId: string): Observable<any> {
+    console.log('API:declineInvitation:req', { projectId });
+    return this.http.post(`${this.baseUrl}/projects/${projectId}/decline`, this.getAuthOptions());
+  }
+
+  revokeInvitation(projectId: string): Observable<any> {
+    console.log('API:revokeInvitation:req', { projectId });
+    return this.http.post(`${this.baseUrl}/projects/${projectId}/revokeInvitation`, this.getAuthOptions());
   }
 
   updateMemberRole(projectId: string, userId: string, role: string): Observable<any> {
@@ -355,6 +360,7 @@ export class BoardService {
     return this.http.get<any>(`${this.baseUrl}/projects/invitations`, this.getAuthOptions()).pipe(
       map((res: any) => {
         const arr = Array.isArray(res?.invitations) ? res.invitations : (Array.isArray(res) ? res : []);
+        console.log('API:getInvitationsReceived:res', { arr });
         this.invitationsReceivedSubject.next(arr);
         return arr;
       })
@@ -366,6 +372,7 @@ export class BoardService {
     return this.http.get<any>(`${this.baseUrl}/projects/sent`, this.getAuthOptions()).pipe(
       map((res: any) => {
         const arr = Array.isArray(res?.invitations) ? res.invitations : (Array.isArray(res) ? res : []);
+        console.log('API:getInvitationsSent:res', { arr });
         this.invitationsSentSubject.next(arr);
         return arr;
       })

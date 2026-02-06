@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, Output, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -34,7 +34,7 @@ import { CardComponent } from '../card/card.component';
 export class ListComponent {
   @Input() list!: ListModel;
   @Input() allLists!: ListModel[];
-  @Input() allTags: { id: string; name: string; color: string }[] = [];
+  @Input() allTags: { _id: string; name: string; color: string }[] = [];
   @Output() listUpdated = new EventEmitter<void>();
   
   dropListIds: string[] = [];
@@ -43,10 +43,12 @@ export class ListComponent {
   showNewCardForm = false;
   editingTitle = false;
   editedTitle = '';
+  @ViewChild('titleInput') titleInput!: ElementRef<HTMLInputElement>;
 
   constructor(private boardService: BoardService) {}
 
   ngOnInit(): void {
+    this.editedTitle = this.list.title;
     this.loadCards();
   }
 
@@ -111,6 +113,13 @@ export class ListComponent {
         next: () => { console.log('API:deleteColumn:success', { projectId: this.list.boardId, columnId: this.list.id }); this.listUpdated.emit(); },
         error: (err) => { console.error('API:deleteColumn:error', { projectId: this.list.boardId, columnId: this.list.id, err }); this.listUpdated.emit(); }
       });
+    }
+  }
+
+  toggleTitleEdit(editing: boolean): void {
+    this.editingTitle = editing;
+    if (editing) {
+      setTimeout(() => this.titleInput.nativeElement.focus());
     }
   }
 
