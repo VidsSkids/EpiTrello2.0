@@ -37,7 +37,7 @@ export class LoginComponent {
   constructor(private auth: AuthService, private router: Router, private route: ActivatedRoute, private boardService: BoardService) { }
 
   loginWithGoogle(): void {
-    window.location.href = `${this.auth.getApiUrl()}/auth/google`;
+    this.auth.loginWithGoogle();
   }
 
   submit(): void {
@@ -65,9 +65,5 @@ export class LoginComponent {
         console.error('API:login:error', err);
       }
     });
-  }
-  
-  loginWithGoogle(): void {
-    this.auth.loginWithGoogle();
   }
 }
