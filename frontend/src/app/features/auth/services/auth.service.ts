@@ -54,7 +54,7 @@ export class AuthService {
  
   loginWithGoogle(): void {
     if (!this.isBrowser) return;
-    window.location.href = `${this.baseUrl}/google`;
+    window.location.href = `${this.getApiUrl()}/auth/google`;
   }
 
   deleteUser(id: number): Observable<void> {
