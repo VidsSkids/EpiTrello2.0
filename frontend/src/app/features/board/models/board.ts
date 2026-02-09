@@ -5,6 +5,4 @@ export interface Board {
   createdAt: Date;
   updatedAt: Date;
   ownerId?: string;
-  favorite?: boolean;
-  visibility?: 'private' | 'public' | 'workspace' | 'Workspace';
 }

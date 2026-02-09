@@ -29,7 +29,12 @@ export class BoardsListComponent {
 
   ngOnInit(): void {
     this.boards$ = this.boardService.boards$;
-    this.boardService.loadProjectsFromServer().subscribe({ next: () => {}, error: () => {} });
+    this.boardService.loadProjectsFromServer().subscribe({
+      next: () => {},
+      error: (err) => {
+        console.error('Failed to load boards', err);
+      }
+    });
   }
 
   openBoard(boardId: string): void {
@@ -39,7 +44,9 @@ export class BoardsListComponent {
   deleteBoard(event: Event, boardId: string): void {
     event.stopPropagation();
     if (confirm('Are you sure you want to delete this board?')) {
-      this.boardService.deleteBoard(boardId);
+      this.boardService.deleteProject(boardId).subscribe({
+        error: (err) => console.error('Failed to delete board', err)
+      });
     }
   }
 }

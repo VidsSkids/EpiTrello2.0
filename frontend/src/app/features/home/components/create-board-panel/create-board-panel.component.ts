@@ -31,21 +31,13 @@ export class CreateBoardPanelComponent {
 
   title = '';
   visibility: 'Workspace' | 'Private' = 'Workspace';
-  gradients: string[] = [];
-  selectedGradient = '';
 
   constructor(private boardService: BoardService, private router: Router) {
-    this.gradients = this.boardService.gradients;
-    this.selectedGradient = this.gradients[0];
-  }
-
-  selectGradient(gradient: string): void {
-    this.selectedGradient = gradient;
   }
 
   create(): void {
     if (!this.title.trim()) return;
-    this.boardService.createBoardFromServer(this.title.trim(), this.selectedGradient).subscribe({
+    this.boardService.createBoardFromServer(this.title.trim()).subscribe({
       next: (board) => {
         this.closed.emit();
         this.router.navigate(['/board', board.id]);

@@ -1,7 +1,7 @@
 import { Injectable, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, catchError, throwError } from 'rxjs';
 import { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse } from '../models/auth';
 import { environment } from '@environments/environment.development';
 
@@ -26,6 +26,10 @@ export class AuthService {
             this.setToken(res.token);
           }
           console.log('API:login:success');
+        }),
+        catchError((err) => {
+          console.error('API:login:error', err);
+          return throwError(() => err);
         })
       );
   }
@@ -47,9 +51,19 @@ export class AuthService {
         })
       );
   }
+ 
+  loginWithGoogle(): void {
+    if (!this.isBrowser) return;
+    window.location.href = `${this.baseUrl}/google`;
+  }
 
   deleteUser(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+    return this.http.delete<void>(`${this.baseUrl}/${id}`).pipe(
+      catchError((err) => {
+        console.error('API:deleteUser:error', err);
+        return throwError(() => err);
+      })
+    );
   }
 
   isAuthenticated(): boolean {

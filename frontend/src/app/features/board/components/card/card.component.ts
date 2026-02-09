@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, TemplateRef, ViewChild, ChangeDetectorRef, ElementRef } from '@angular/core';
+import { Component, EventEmitter, Input, Output, TemplateRef, ViewChild, ChangeDetectorRef, ElementRef, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -39,38 +39,172 @@ export class CardComponent {
   @Input() card!: CardModel;
   @Input() projectId!: string;
   @Input() columnId!: string;
-  @Input() allTags: { id: string; name: string; color: string }[] = [];
+  @Input() allTags: { _id: string; name: string; color: string }[] = [];
   @Output() cardUpdated = new EventEmitter<void>();
   
-  cardLabels: { id: string; name: string; color: string }[] = [];
   editedTitle = '';
   editedDescription = '';
   editingTitle = false;
   @ViewChild('editDialog') editDialogTpl!: TemplateRef<any>;
   @ViewChild('titleInput') titleInput!: ElementRef<HTMLInputElement>;
-  tags: { id: string; name: string; color?: string; attached: boolean; initiallyAttached: boolean }[] = [];
+  tags: { id: string; name: string; color?: string }[] = [];
   labelsDensity: 'normal' | 'compact' | 'ultra' = 'normal';
   checklists: Array<ChecklistModel> = [];
   newChecklistTitle: string = '';
   showCreateTagForm = false;
+  showNewChecklistForm = false;
   newTagName = '';
   newTagColor = '#FFFFFF';
+  selectedTag: { _id: string; name: string; color?: string } | null = null;
+  editedTagName: string = '';
+  editingChecklistId: string | null = null;
+  editedChecklistTitle = '';
+
+  editingItemId: string | null = null;
+  editedItemContent = '';
+  checklistsCompletionSummary: string | null = null;
+
+  private updateChecklistsCompletionSummary(): void {
+    const summary = this.getChecklistsCompletionSummary();
+    this.checklistsCompletionSummary = summary ? summary : null;
+  }
+
+  startEditChecklist(checklist: ChecklistModel) {
+    this.editingChecklistId = checklist.id;
+    this.editedChecklistTitle = checklist.title;
+  }
+
+  saveChecklistTitle(checklist: ChecklistModel) {
+    if (!this.editingChecklistId || !this.editedChecklistTitle.trim()) {
+      this.editingChecklistId = null;
+      return;
+    }
+
+    const newTitle = this.editedChecklistTitle.trim();
+    if (newTitle === checklist.title) {
+      this.editingChecklistId = null;
+      return;
+    }
+    
+    const projectId = this.projectId || '';
+    const columnId = this.columnId || this.card.listId;
+    const cardId = this.card.id;
+    if (!projectId || !columnId || !cardId || !checklist.id) {
+      this.editingChecklistId = null;
+      return;
+    }
+
+    this.boardService.updateChecklist(projectId, columnId, cardId, checklist.id, { title: newTitle }).subscribe({
+      next: () => {
+        Promise.resolve().then(() => {
+          checklist.title = newTitle;
+          
+          if ((this.card as any).checklists) {
+            const cardChecklist = (this.card as any).checklists.find((c: any) => c.id === this.editingChecklistId);
+            if (cardChecklist) {
+              cardChecklist.title = newTitle;
+            }
+          }
+          this.editingChecklistId = null;
+          this.updateChecklistsCompletionSummary();
+          this.cdr.detectChanges();
+        });
+      },
+      error: (err) => {
+        console.error('Failed to update checklist title', err);
+        this.editingChecklistId = null;
+      }
+    });
+  }
+
+  cancelEditChecklist() {
+    this.editingChecklistId = null;
+    this.editedChecklistTitle = '';
+  }
+
+  startEditItem(item: ChecklistItemModel) {
+    this.editingItemId = item.id;
+    this.editedItemContent = item.content;
+  }
+
+  saveItemContent(checklist: ChecklistModel, item: ChecklistItemModel) {
+    if (!this.editingItemId || !this.editedItemContent.trim()) {
+      this.editingItemId = null;
+      return;
+    }
+
+    const newContent = this.editedItemContent.trim();
+    if (newContent === item.content) {
+      this.editingItemId = null;
+      return;
+    }
+
+    const projectId = this.projectId || '';
+    const columnId = this.columnId || this.card.listId;
+    const cardId = this.card.id;
+
+    this.boardService.updateChecklistItem(projectId, columnId, cardId, checklist.id, item.id, { content: newContent }).subscribe({
+      next: () => {
+        Promise.resolve().then(() => {
+          item.content = newContent;
+          this.editingItemId = null;
+          this.updateChecklistsCompletionSummary();
+          this.cdr.detectChanges();
+        });
+      },
+      error: (err) => {
+        console.error('Failed to update checklist item', err);
+        this.editingItemId = null;
+      }
+    });
+  }
+
+
+  startEditTag(tag: { _id: string, name: string, color?: string }) {
+    this.editedTagName = tag.name;
+    this.selectedTag = tag;
+  }
+
+  saveTag() {
+    const newName = this.editedTagName.trim();
+    if (!newName) { return; }
+    this.boardService.updateTag(this.projectId, this.selectedTag!._id, { name: newName, color: this.selectedTag!.color }).subscribe({
+      next: () => {
+        Promise.resolve().then(() => {
+          const tagInAllTags = this.allTags.find(t => t._id === this.selectedTag!._id); 
+          if (tagInAllTags) {
+            tagInAllTags.name = newName;
+            tagInAllTags.color = this.selectedTag!.color || tagInAllTags.color;
+          }
+          const tagInCard = this.tags.find(t => t.id === this.selectedTag!._id);
+          if (tagInCard) {
+            tagInCard.name = newName;
+            tagInCard.color = this.selectedTag!.color || tagInCard.color;
+          }
+          this.selectedTag = null;
+          this.cdr.detectChanges();
+        });
+      },
+      error: (err) => {
+        console.error('Failed to update tag', err);
+        this.selectedTag = null;
+      }
+    });
+  }
 
   constructor(private boardService: BoardService, private dialog: MatDialog, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
-    this.updateCardLabels();
+    this.initTags();
+    this.loadChecklistsFromCard();
+    this.updateChecklistsCompletionSummary();
   }
 
-  ngOnChanges(): void {
-    this.updateCardLabels();
-  }
-
-  updateCardLabels(): void {
-    if (this.card && this.card.tagIds && this.allTags) {
-      this.cardLabels = this.allTags.filter(tag => this.card.tagIds?.includes(tag.id));
-    } else {
-      this.cardLabels = [];
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['card']) {
+      this.initTags();
+      this.loadChecklistsFromCard();
+      this.updateChecklistsCompletionSummary();
     }
   }
 
@@ -79,18 +213,20 @@ export class CardComponent {
     this.editedDescription = this.card.description || '';
     this.editingTitle = false;
     this.initTags();
-    this.loadProjectTags();
     this.loadChecklistsFromCard();
+    this.updateChecklistsCompletionSummary();
     this.openEditDialog();
   }
 
   openEditDialog(): void {
     const ref = this.dialog.open(this.editDialogTpl, {
       width: '60%',
-      maxWidth: 'none'
+      maxWidth: 'none',
+      height: '80%',
+      panelClass: 'custom-dialog'
     });
     ref.afterClosed().subscribe((result) => {
- if (result === 'delete') {
+      if (result === 'delete') {
         this.deleteCard();
       }
     });
@@ -117,7 +253,8 @@ export class CardComponent {
           this.cdr.detectChanges();
         });
       },
-      error: () => {
+      error: (err) => {
+        console.error('API:updateCardFieldsAPI:error', err);
         this.editingTitle = false;
         this.cardUpdated.emit();
       }
@@ -139,7 +276,8 @@ export class CardComponent {
           this.cdr.detectChanges();
         });
       },
-      error: () => {
+      error: (err) => {
+        console.error('API:updateCardFieldsAPI:error', err);
         this.cardUpdated.emit();
       }
     });
@@ -159,43 +297,19 @@ export class CardComponent {
   }
 
   initTags(): void {
-    const raw = Array.isArray((this.card as any)?.labels) ? (this.card as any).labels : [];
-    console.log('raw', raw);
-    this.tags = raw.map((lab: any) => {
-      const id = lab?.uuid || lab?.id || lab?._id || lab;
-      const name = lab?.name || lab?.title || String(lab);
-      const color = lab?.color;
-      return { id, name, color, attached: true, initiallyAttached: true };
+    this.tags = [];
+    this.allTags.forEach(tag => {
+      if (this.card.tagIds?.find(tid => tid === tag._id)) {
+        this.tags.push({
+          id: tag._id,
+          name: tag.name,
+          color: tag.color,
+        });
+      }
     });
     this.recalcLabelsDensity();
   }
-  
-  loadProjectTags(): void {
-    const projectId = this.projectId || '';
-    if (!projectId) return;
-    this.boardService.getProject(projectId).subscribe({
-      next: (res: any) => {
-        const project = res?.project || res || {};
-        const arr = Array.isArray(project?.tags) ? project.tags : [];
-        const tagIds = Array.isArray((this.card as any)?.tagIds) ? (this.card as any).tagIds : [];
-        const attachedIds = new Set(tagIds || []);
-        const mapped = arr.map((t: any) => {
-          const id = t?._id;
-          const name = t?.name;
-          const color = t?.color;
-          const initiallyAttached = attachedIds.has(id);
-          const attached = initiallyAttached;
-          return { id, name, color, attached, initiallyAttached };
-        });
-        Promise.resolve().then(() => {
-          this.tags = mapped;
-          this.recalcLabelsDensity();
-          this.cdr.detectChanges();
-        });
-      },
-      error: () => {}
-    });
-  }
+
 
   toggleTagAttachment(tag: { id: string; name: string; color?: string; attached: boolean; initiallyAttached: boolean }, checked: boolean): void {
     const projectId = this.projectId || '';
@@ -211,11 +325,6 @@ export class CardComponent {
           Promise.resolve().then(() => {
             tag.attached = true;
             tag.initiallyAttached = true;
-            const exists = Array.isArray((this.card as any).labels) && (this.card as any).labels.some((l: any) => (l?.id || l?.uuid) === tag.id);
-            if (!exists) {
-              const obj: any = { id: tag.id, name: tag.name, color: tag.color };
-              (this.card as any).labels = [ ...(this.card as any).labels || [], obj ];
-            }
             const hasTid = Array.isArray((this.card as any).tagIds) && (this.card as any).tagIds.includes(tag.id);
             if (!hasTid) {
               (this.card as any).tagIds = [ ...(Array.isArray((this.card as any).tagIds) ? (this.card as any).tagIds : []), tag.id ];
@@ -224,7 +333,7 @@ export class CardComponent {
             this.cdr.detectChanges();
           });
         },
-        error: () => {}
+        error: (err) => console.error('API:attachTagToCard:error', err)
       });
     } else {
       if (!tag.initiallyAttached) {
@@ -236,7 +345,6 @@ export class CardComponent {
           Promise.resolve().then(() => {
             tag.attached = false;
             tag.initiallyAttached = false;
-            (this.card as any).labels = ((this.card as any).labels || []).filter((l: any) => (l?.id || l?.uuid) !== tag.id);
             if (Array.isArray((this.card as any).tagIds)) {
               (this.card as any).tagIds = (this.card as any).tagIds.filter((tid: any) => tid !== tag.id);
             }
@@ -244,7 +352,7 @@ export class CardComponent {
             this.cdr.detectChanges();
           });
         },
-        error: () => {}
+        error: (err) => console.error('API:detachTagFromCard:error', err)
       });
     }
   }
@@ -257,11 +365,11 @@ export class CardComponent {
     if (!name || !projectId || !cardId) return;
     this.boardService.createTag(projectId, name, color).subscribe({
       next: (res: any) => {
-        const t = res?.tag || res || {};
-        const id = t?.id || t?.uuid;
-        const rname = t?.name || t?.title || name;
+        const t = res?.newTag || {};
+        const id = t?._id;
+        const rname = t?.name || name;
         const rcolor = t?.color || color;
-        const item = { id, name: rname, color: rcolor, attached: true, initiallyAttached: true };
+        const item = { id, name: rname, color: rcolor };
         Promise.resolve().then(() => {
           this.tags = [ ...this.tags, item ];
           this.recalcLabelsDensity();
@@ -269,24 +377,24 @@ export class CardComponent {
           this.newTagName = '';
           this.newTagColor = '#FFFFFF';
           this.cdr.detectChanges();
+          this.allTags = [ ...this.allTags, { _id: id, name: rname, color: rcolor } ];
         });
         this.boardService.attachTagToCard(projectId, id, cardId).subscribe({
           next: () => {
             Promise.resolve().then(() => {
-              (this.card as any).labels = [ ...(this.card as any).labels || [], { id, name: rname, color: rcolor } ];
               (this.card as any).tagIds = [ ...(Array.isArray((this.card as any).tagIds) ? (this.card as any).tagIds : []), id ];
               this.cdr.detectChanges();
             });
           },
-          error: () => {}
+          error: (err) => console.error('API:attachTagToCard:error', err)
         });
       },
-      error: () => {}
+      error: (err) => console.error('API:createTag:error', err)
     });
   }
 
-  editTag(tag: { id: string; name: string; color?: string; attached: boolean }): void {
-    const name = prompt('Nom du label', tag.name) || tag.name;
+  editTag(tag: { id: string; name: string; color?: string; }): void {
+    const name = prompt('Nom du tag', tag.name) || tag.name;
     const color = prompt('Couleur (hex ou nom CSS)', tag.color || '') || tag.color;
     const projectId = this.projectId || '';
     if (!projectId || !tag.id) return;
@@ -295,36 +403,70 @@ export class CardComponent {
         Promise.resolve().then(() => {
           tag.name = name;
           tag.color = color || tag.color;
-          (this.card as any).labels = ((this.card as any).labels || []).map((l: any) => {
-            const lid = l?.id || l?.uuid;
-            if (lid === tag.id) return { ...l, name: tag.name, color: tag.color };
-            return l;
-          });
           this.recalcLabelsDensity();
           this.cdr.detectChanges();
         });
       },
-      error: () => {}
+      error: (err) => console.error('API:updateTag:error', err)
     });
   }
 
-  deleteTag(tag: { id: string; name: string; color?: string; attached: boolean }): void {
+  deleteTag(tag: { id: string; name: string; color?: string;}): void {
     const projectId = this.projectId || '';
     if (!projectId || !tag.id) return;
-    if (!confirm('Supprimer ce label ?')) return;
     this.boardService.deleteTag(projectId, tag.id).subscribe({
       next: () => {
         Promise.resolve().then(() => {
           this.tags = this.tags.filter(t => t.id !== tag.id);
-          (this.card as any).labels = ((this.card as any).labels || []).filter((l: any) => (l?.id || l?.uuid) !== tag.id);
           if (Array.isArray((this.card as any).tagIds)) {
             (this.card as any).tagIds = (this.card as any).tagIds.filter((tid: any) => tid !== tag.id);
+          }
+          this.allTags = this.allTags.filter(t => t._id !== tag.id);
+          this.recalcLabelsDensity();
+          this.cdr.detectChanges();
+          this.selectedTag = null;
+          this.editedTagName = '';
+        });
+      },
+      error: (err) => console.error('API:deleteTag:error', err)
+    });
+  }
+
+  atachTag(tag: { id: string; name: string; color?: string; }) {
+    const projectId = this.projectId || '';
+    const cardId = this.card.id;
+    if (!projectId || !cardId || !tag.id) return;
+    this.boardService.attachTagToCard(projectId, tag.id, cardId).subscribe({
+      next: () => {
+        Promise.resolve().then(() => {
+          this.tags = [ ...this.tags, tag ];
+          this.recalcLabelsDensity();
+          this.cdr.detectChanges();
+        });
+      },
+      error: (err) => console.error('API:attachTagToCard:error', err)
+    });
+  }
+
+  detachTag(tagToDetach: { id: string }): void {
+    const projectId = this.projectId || '';
+    const cardId = this.card.id;
+    if (!projectId || !cardId || !tagToDetach.id) return;
+
+    this.boardService.detachTagFromCard(projectId, tagToDetach.id, cardId).subscribe({
+      next: () => {
+        Promise.resolve().then(() => {
+          this.tags = this.tags.filter(t => t.id !== tagToDetach.id);
+          if (Array.isArray(this.card.tagIds)) {
+            this.card.tagIds = this.card.tagIds.filter(tid => tid !== tagToDetach.id);
           }
           this.recalcLabelsDensity();
           this.cdr.detectChanges();
         });
       },
-      error: () => {}
+      error: (err) => {
+        console.error('Failed to detach tag', err);
+      }
     });
   }
 
@@ -355,19 +497,20 @@ export class CardComponent {
     console.log('loadChecklistsFromCard', (this.card as any)?.checklists);
     const raw = Array.isArray((this.card as any)?.checklists) ? (this.card as any).checklists : [];
     this.checklists = raw.map((cl: any, idx: number) => {
-      const id = cl?.uuid || cl?.id || cl?._id || String(idx);
-      const title = cl?.title || cl?.name || '';
+      const id = cl?._id || cl?.id;
+      const title = cl?.title;
       const itemsArr = Array.isArray(cl?.items) ? cl.items : [];
       const items = itemsArr.map((it: any, j: number) => {
-        const iid = it?._id || String(j);
+        const iid = it?._id || it?.id;
         const t = it?.content || '';
-        const isDone = typeof it?.isDone === 'boolean' ? it.isDone : false;
-        const dueDate = it?.dueDate || '';
-        const assignedTo = it?.assignedTo || '';
-        return { id: iid, content: t, isDone, dueDate, assignedTo } as ChecklistItemModel;
+        const isChecked = typeof it?.isChecked === 'boolean' ? it.isChecked : false;
+        const dueDate = it?.dueDate || 0;
+        const assignedTo = it?.assignedTo || [];
+        return { id: iid, content: t, isChecked, dueDate, assignedTo } as ChecklistItemModel;
       });
-      return { id, title, items, showAddItem: false };
+      return { id, title, items, showAddItem: false, newChecklistItemContent: '' };
     });
+    this.updateChecklistsCompletionSummary();
   }
 
   addChecklist(): void {
@@ -384,10 +527,12 @@ export class CardComponent {
           this.checklists = [ ...this.checklists, { id, title, items: [] } ];
           (this.card as any).checklists = this.checklists.map(cl => ({ id: cl.id, title: cl.title, items: cl.items }));
           this.newChecklistTitle = '';
+          this.updateChecklistsCompletionSummary();
           this.cdr.detectChanges();
+          this.showNewChecklistForm = false;
         });
       },
-      error: () => {}
+      error: (err) => console.error('API:createChecklist:error', err)
     });
   }
 
@@ -401,10 +546,11 @@ export class CardComponent {
       next: () => {
         Promise.resolve().then(() => {
           (this.card as any).checklists = this.checklists.map(x => ({ id: x.id, title: x.title, items: x.items }));
+          this.updateChecklistsCompletionSummary();
           this.cdr.detectChanges();
         });
       },
-      error: () => {}
+      error: (err) => console.error('API:updateChecklist:error', err)
     });
   }
 
@@ -418,10 +564,11 @@ export class CardComponent {
         Promise.resolve().then(() => {
           this.checklists = this.checklists.filter(x => x.id !== cl.id);
           (this.card as any).checklists = this.checklists.map(x => ({ id: x.id, title: x.title, items: x.items }));
+          this.updateChecklistsCompletionSummary();
           this.cdr.detectChanges();
         });
       },
-      error: () => {}
+      error: (err) => console.error('API:deleteChecklist:error', err)
     });
   }
 
@@ -439,27 +586,29 @@ export class CardComponent {
     cl.items.push(tempItem as any);
     cl.newChecklistItemContent = '';
     (this.card as any).checklists = this.checklists.map(x => ({ id: x.id, title: x.title, items: x.items }));
+    this.updateChecklistsCompletionSummary();
     this.cdr.detectChanges();
 
     this.boardService.createChecklistItem(projectId, columnId, cardId, cl.id, content).subscribe({
       next: (res: any) => {
-        const it = res?.item || res || {};
-        const id = it?.uuid || it?.id || it?._id;
-        Promise.resolve().then(() => {
-          const index = cl.items.findIndex(i => i.id === tempId);
-          if (index > -1) {
-            cl.items[index] = { id, content, isDone: false };
+        const newItem = res?.item;
+        if (newItem) {
+          Promise.resolve().then(() => {
+            const itemIndex = cl.items.findIndex(item => item.id === tempId);
+            if (itemIndex > -1) {
+              cl.items[itemIndex] = { ...newItem, id: newItem._id };
+            }
             (this.card as any).checklists = this.checklists.map(x => ({ id: x.id, title: x.title, items: x.items }));
+            this.updateChecklistsCompletionSummary();
             this.cdr.detectChanges();
-          }
-        });
+          });
+        }
       },
-      error: () => {
-        Promise.resolve().then(() => {
-          cl.items = cl.items.filter(i => i.id !== tempId);
-          (this.card as any).checklists = this.checklists.map(x => ({ id: x.id, title: x.title, items: x.items }));
-          this.cdr.detectChanges();
-        });
+      error: (err) => {
+        console.error('Failed to add checklist item', err);
+        cl.items = cl.items.filter(item => item.id !== tempId);
+        this.updateChecklistsCompletionSummary();
+        this.cdr.detectChanges();
       }
     });
   }
@@ -469,20 +618,50 @@ export class CardComponent {
     const columnId = this.columnId || this.card.listId;
     const cardId = this.card.id;
     if (!projectId || !columnId || !cardId || !cl.id || !it.id) return;
-    this.boardService.updateChecklistItem(projectId, columnId, cardId, cl.id, it.id, it).subscribe({
+    this.boardService.updateChecklistItem(projectId, columnId, cardId, cl.id, it.id, {content: it.content, isChecked: it.isChecked, dueDate: 0, assignedTo: it.assignedTo}).subscribe({
       next: () => {
         Promise.resolve().then(() => {
           (this.card as any).checklists = this.checklists.map(x => ({ id: x.id, title: x.title, items: x.items }));
+          this.updateChecklistsCompletionSummary();
           this.cdr.detectChanges();
         });
       },
-      error: () => {}
+      error: (err) => {
+        console.error('API:updateChecklistItem:error', err);
+        it.isChecked = !it.isChecked;
+        this.updateChecklistsCompletionSummary();
+        this.cdr.detectChanges();
+      }
     });
   }
 
   toggleChecklistItem(cl: { id: string }, it: ChecklistItemModel, checked: boolean): void {
-    it.isDone = checked;
-    this.updateChecklistItem(cl, it);
+    const originalState = it.isChecked;
+    it.isChecked = checked;
+          console.log('toggleChecklistItem', this.checklists);
+
+    const projectId = this.projectId || '';
+    const columnId = this.columnId || this.card.listId;
+    const cardId = this.card.id;
+    if (!projectId || !columnId || !cardId || !cl.id || !it.id) return;
+
+    this.boardService.updateChecklistItem(projectId, columnId, cardId, cl.id, it.id, { isChecked: checked }).subscribe({
+      next: () => {
+        Promise.resolve().then(() => {
+          (this.card as any).checklists = this.checklists.map(x => ({ id: x.id, title: x.title, items: x.items }));
+          this.updateChecklistsCompletionSummary();
+          this.cdr.detectChanges();
+        });
+      },
+      error: (err) => {
+        console.error('Failed to update checklist item checked state', err);
+        Promise.resolve().then(() => {
+          it.isChecked = originalState;
+          this.updateChecklistsCompletionSummary();
+          this.cdr.detectChanges();
+        });
+      }
+    });
   }
 
   deleteChecklistItem(cl: { id: string; items: Array<ChecklistItemModel> }, it: { id: string }): void {
@@ -495,18 +674,42 @@ export class CardComponent {
         Promise.resolve().then(() => {
           cl.items = cl.items.filter(x => x.id !== it.id);
           (this.card as any).checklists = this.checklists.map(x => ({ id: x.id, title: x.title, items: x.items }));
+          this.updateChecklistsCompletionSummary();
           this.cdr.detectChanges();
         });
       },
-      error: () => {}
+      error: (err) => {
+        console.error('Failed to delete checklist item', err);
+      }
     });
   }
 
   getChecklistCompletion(cl: { items: Array<ChecklistItemModel> }): number {
     const total = cl.items.length;
     if (total === 0) return 0;
-    const done = cl.items.filter(i => i.isDone).length;
+    const done = cl.items.filter(i => i.isChecked).length;
     return Math.round((done / total) * 100);
+  }
+
+  getChecklistsCompletionSummary(): string {
+    const checklists = (this.card as any)?.checklists || [];
+    if (!checklists || checklists.length === 0) {
+      return '';
+    }
+    let totalItems = 0;
+    let completedItems = 0;
+    for (const checklist of checklists) {
+      const items = checklist?.items || [];
+      totalItems += items.length;
+      completedItems += items.filter((item: any) => item.isChecked).length;
+    }
+    if (totalItems === 0) {
+      return '';
+    }
+    if (totalItems === completedItems) {
+      return '100%';
+    }
+    return `${completedItems}/${totalItems}`;
   }
 
   toggleTitleEdit(editing: boolean): void {

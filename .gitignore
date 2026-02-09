@@ -7,3 +7,6 @@ google_secrets.json
 **/dist
 /.eslintcache
 /.madge-cache
+frontend/node_modules/
+frontend/.vscode/
+.editorconfig

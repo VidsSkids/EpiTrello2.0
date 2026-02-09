@@ -14,9 +14,9 @@
         @for (board of (boards$ | async); track board.id) {
           <mat-grid-tile>
             <mat-card class="board-card" (click)="openBoard(board.id)">
-              <div class="card-bg" [style.background]=""></div>
               <div class="card-footer">
                 <div class="card-title">{{ board.title }}</div>
+                <mat-icon class="card-icon">arrow_forward</mat-icon>
               </div>
             </mat-card>
           </mat-grid-tile>

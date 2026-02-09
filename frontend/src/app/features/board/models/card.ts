@@ -1,7 +1,7 @@
 export interface ChecklistItem {
   id: string;
   content: string;
-  isDone: boolean;
+  isChecked: boolean;
   dueDate?: number;
   assignedTo?: string[];
 

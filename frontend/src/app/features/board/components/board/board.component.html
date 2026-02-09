@@ -4,15 +4,15 @@
     <a matButton class="toolbar-title" (click)="goHome()">EpiTrello</a>
   </div>
   <div class="toolbar-profile-container">
-    <button matButton class="toolbar-profile" [matMenuTriggerFor]="userMenu">
+    <button matButton class="toolbar-profile simple-button" [matMenuTriggerFor]="userMenu">
       <mat-icon>account_circle</mat-icon>
     </button>
     <mat-menu #userMenu="matMenu">
-      <button mat-menu-item [matMenuTriggerFor]="membersMenu">
+      <button mat-menu-item [matMenuTriggerFor]="membersMenu" class="simple-button">
         <mat-icon>group</mat-icon>
         <span>Members</span>
       </button>
-      <button mat-menu-item (click)="leaveOrDelete()">
+      <button mat-menu-item (click)="leaveOrDelete()" class="simple-button">
         <mat-icon>{{ isOwner ? 'delete' : 'logout' }}</mat-icon>
         <span>{{ isOwner ? 'Delete project' : 'Leave project' }}</span>
       </button>
@@ -24,20 +24,20 @@
 <mat-toolbar class="board-toolbar">
   <div class="board-left">
     @if (!editingTitle) {
-      <button mat-button class="board-title" (click)="startEditTitle(currentBoard)">
-        <mat-icon>title</mat-icon>
+      <div class="board-title" (click)="toggleTitleEdit(true)">
         <span>{{ currentBoard.title }}</span>
-      </button>
-    } @else {
-      <mat-form-field appearance="outline" style="min-width: 240px;">
-        <mat-label>Board title</mat-label>
-        <input matInput [(ngModel)]="tempTitle" (keyup.enter)="saveTitle(currentBoard)" (blur)="saveTitle(currentBoard)">
-      </mat-form-field>
+      </div>
     }
-    <button mat-stroked-button [matMenuTriggerFor]="viewsMenu">
-      <mat-icon>view_agenda</mat-icon>
-      Views
-    </button>
+    @if (editingTitle) {
+      <div class="board-title-edit">
+        <input 
+          #titleInput
+          type="text"
+          [(ngModel)]="editedTitle" 
+          (blur)="toggleTitleEdit(false); saveTitle(currentBoard)" 
+          (keyup.enter)="saveTitle(currentBoard)">
+      </div>
+    }
     <mat-menu #viewsMenu="matMenu">
       <button mat-menu-item (click)="currentView = 'kanban'"><mat-icon>view_kanban</mat-icon> Kanban</button>
       <button mat-menu-item (click)="currentView = 'calendar'"><mat-icon>calendar_month</mat-icon> Calendar</button>
@@ -45,40 +45,7 @@
     </mat-menu>
   </div>
   <div class="board-right">
-    <button mat-icon-button (click)="toggleFavorite(currentBoard)" [attr.aria-label]="favorite ? 'Unfavorite' : 'Favorite'">
-      <mat-icon>{{ favorite ? 'star' : 'star_border' }}</mat-icon>
-    </button>
-    <button mat-icon-button [matMenuTriggerFor]="membersMenu" aria-label="Members">
-      <mat-icon>group</mat-icon>
-    </button>
-    <button mat-icon-button [matMenuTriggerFor]="visibilityMenu">
-      <mat-icon>person</mat-icon>
-    </button>
-    <mat-menu #visibilityMenu="matMenu">
-      <button mat-menu-item (click)="setVisibility('private')">
-        <mat-icon [style.visibility]="(visibility | lowercase) === 'private' ? 'visible' : 'hidden'">check</mat-icon>
-        <div class="vis-menu-item">
-          <span class="vis-title">Private</span>
-          <span class="vis-desc">Only board members can see and edit this board.</span>
-        </div>
-      </button>
-      <button mat-menu-item (click)="setVisibility('workspace')">
-        <mat-icon [style.visibility]="(visibility | lowercase) === 'workspace' ? 'visible' : 'hidden'">check</mat-icon>
-        <div class="vis-menu-item">
-          <span class="vis-title">Workspace</span>
-          <span class="vis-desc">All members of the Workspace can see and edit this board.</span>
-        </div>
-      </button>
-      <button mat-menu-item (click)="setVisibility('public')">
-        <mat-icon [style.visibility]="(visibility | lowercase) === 'public' ? 'visible' : 'hidden'">check</mat-icon>
-        <div class="vis-menu-item">
-          <span class="vis-title">Public</span>
-          <span class="vis-desc">Anyone on the internet can see this board. Only board members can edit.</span>
-        </div>
-      </button>
-    </mat-menu>
-    <button mat-raised-button color="primary" (click)="openShareDialog(shareDialog)">
-      <mat-icon>share</mat-icon>
+    <button mat-stroked-button class="simple-button" (click)="openShareDialog(shareDialog)">
       Share
     </button>
   </div>
@@ -105,7 +72,7 @@
 
             @if (!showNewListForm) {
               <div class="add-list-container">
-                <div mat-button (click)="showNewListForm = true" class="add-list-button">
+                <div mat-stroked-button (click)="showNewListForm = true" class="add-list-button simple-button">
                   <mat-icon>add</mat-icon> Add another list
                 </div>
               </div>
@@ -117,7 +84,7 @@
                     <input matInput [(ngModel)]="newListTitle" placeholder="Enter list title" required (keyup.enter)="createList()">
                   </mat-form-field>
                   <div class="form-actions">
-                    <button mat-raised-button color="primary" (click)="createList()" [disabled]="!newListTitle">Add List</button>
+                    <button mat-stroked-button style="width: 100%;" class="simple-button" color="primary" (click)="createList()" [disabled]="!newListTitle">Add List</button>
                     <button mat-icon-button (click)="showNewListForm = false">
                       <mat-icon>close</mat-icon>
                     </button>
@@ -135,7 +102,7 @@
     <div class="empty-state">
       <h2>Welcome to EpiTrello!</h2>
       <p>Create your first board to get started.</p>
-      <button mat-raised-button color="primary" (click)="showNewBoardForm = true">
+      <button mat-stroked-button class="simple-button" color="primary" (click)="showNewBoardForm = true">
         <mat-icon>add</mat-icon> Create Board
       </button>
     </div>
@@ -144,22 +111,22 @@
 
 <ng-template #shareDialog>
   <div class="share-dialog">
-    <h3>Partager ce projet</h3>
+    <h3>Share this project</h3>
     <div class="share-row">
       <mat-form-field appearance="outline" style="flex: 1;">
-        <mat-label>Nom</mat-label>
-        <input matInput #inviteName placeholder="Ex: Jean Dupont">
+        <mat-label>Name</mat-label>
+        <input matInput #inviteName placeholder="e.g., John Doe">
       </mat-form-field>
-      <button mat-raised-button color="primary" (click)="sendInvite(inviteName.value)">
+      <button matButton class="simple-button" color="primary" (click)="sendInvite(inviteName.value)">
         <mat-icon>send</mat-icon>
-        Envoyer
+        Send
       </button>
     </div>
     @if (inviteError) { <div class="error">{{ inviteError }}</div> }
     <div class="share-section">
-      <h4>Membres</h4>
+      <h4>Members</h4>
       @if ((members.length || 0) === 0) {
-        <div class="members-empty">Aucun membre</div>
+        <div class="members-empty">No members</div>
       } @else {
         <div class="members-list">
           @for (m of members; track m.userId) {
@@ -167,13 +134,12 @@
               <mat-icon>person</mat-icon>
               <div class="member-info">
                 <div class="member-name">
-                  {{ m.username }} 
-                  @if (ownerId && (m.id === ownerId)) { <strong>(Owner)</strong> }
+                  {{ m.username }}
                 </div>
               </div>
               <div style="flex: 1;"></div>
-              
-              @if (!ownerId || (m.id !== ownerId)) {
+              <strong>{{ m.role }}</strong>
+              @if (!ownerId || (m.userId !== ownerId)) {
                 <button mat-icon-button [matMenuTriggerFor]="roleMenu" [matMenuTriggerData]="{member: m}">
                   <mat-icon>{{ (m.role === 'Administrator' || m.role === 'Owner') ? 'admin_panel_settings' : (m.role === 'Contributer' ? 'edit' : 'visibility') }}</mat-icon>
                 </button>
@@ -194,7 +160,7 @@
     <div class="share-section">
       <h4>Invitations</h4>
       @if ((invitations.length || 0) === 0) {
-        <div class="members-empty">Aucune invitation</div>
+        <div class="members-empty">No invitations</div>
       } @else {
         <div class="members-list">
           @for (inv of invitations; track inv.id) {
@@ -205,7 +171,7 @@
                 <div class="member-sub">{{ inv.createdAt | date:'short' }}</div>
               </div>
               <div style="flex: 1;"></div>
-              <button mat-button color="warn" (click)="revokeInvitation(inv)">Revoke</button>
+              <button mat-stroked-button class="simple-button" color="warn" (click)="revokeInvitation(inv)">Revoke</button>
             </div>
           }
         </div>
@@ -216,21 +182,21 @@
 
 <mat-menu #roleMenu="matMenu" yPosition="below" xPosition="after" overlapTrigger="false">
   <ng-template matMenuContent let-m="member">
-    <button mat-menu-item (click)="changeMemberRole(m, 'Reader')">
+    <button mat-menu-item (click)="changeMemberRole(m, 'Reader')" class="simple-button">
       <mat-icon [style.visibility]="m.role === 'Reader' ? 'visible' : 'hidden'">check</mat-icon>
       <div class="vis-menu-item">
         <span class="vis-title">Reader</span>
         <span class="vis-desc">Can only view the board.</span>
       </div>
     </button>
-    <button mat-menu-item (click)="changeMemberRole(m, 'Contributer')">
+    <button mat-menu-item (click)="changeMemberRole(m, 'Contributer')" class="simple-button">
       <mat-icon [style.visibility]="m.role === 'Contributer' ? 'visible' : 'hidden'">check</mat-icon>
       <div class="vis-menu-item">
         <span class="vis-title">Contributer</span>
         <span class="vis-desc">Can view and edit the board.</span>
       </div>
     </button>
-    <button mat-menu-item (click)="changeMemberRole(m, 'Administrator')">
+    <button mat-menu-item (click)="changeMemberRole(m, 'Administrator')" class="simple-button">
       <mat-icon [style.visibility]="m.role === 'Administrator' ? 'visible' : 'hidden'">check</mat-icon>
       <div class="vis-menu-item">
         <span class="vis-title">Administrator</span>
