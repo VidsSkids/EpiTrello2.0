@@ -1,12 +1,12 @@
 node_modules/
 .env
 google_secrets.json
+**/.angular
 
 # tools & outputs
 **/dist
 /.eslintcache
 /.madge-cache
 frontend/node_modules/
-frontend/.angular/
 frontend/.vscode/
 .editorconfig

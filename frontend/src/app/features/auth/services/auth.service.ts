@@ -12,6 +12,10 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
+  getApiUrl(): string {
+    return environment.apiURL;
+  }
+
   login(payload: LoginRequest): Observable<LoginResponse> {
     console.log('API:login:req');
     return this.http
@@ -89,7 +93,7 @@ export class AuthService {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
-  private setToken(token: string): void {
+  setToken(token: string): void {
     if (!this.isBrowser) return;
     localStorage.setItem(this.TOKEN_KEY, token);
   }

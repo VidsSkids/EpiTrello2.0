@@ -1,0 +1,55 @@
+name: CD - Deploy Backend
+
+on:
+  push:
+    branches:
+      - backend-main
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: Deploiement information
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Upload build to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "backend/dist,backend/package.json,backend/package-lock.json"
+          target: ${{ secrets.APP_DIR }}
+
+      - name: Install prod deps & restart app
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+            cd ${{ secrets.APP_DIR }}
+            npm ci --omit=dev
+            pm2 restart epitrello || pm2 start npm --name epitrello -- run start-build
