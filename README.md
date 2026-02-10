@@ -1,36 +1,36 @@
 # EpiTrello 2.0 — Kanban App (Monorepo)
 
-EpiTrello est une application Kanban moderne permettant d’organiser des projets avec des boards, des listes et des cartes, la gestion des membres, des invitations, des checklists et des tags. Le dépôt est structuré en monorepo avec:
+EpiTrello is a modern Kanban application to organize projects with boards, lists, and cards, member management, invitations, checklists, and tags. The repository is structured as a monorepo with:
 
-- frontend/ (Angular 20 + Angular Material, SSR, tests Karma/Jasmine)
+- frontend/ (Angular 20 + Angular Material, SSR, Karma/Jasmine tests)
 - backend/ (Express.js + TypeScript + MongoDB, REST API)
 
-## Sommaire
-- Présentation et structure
-- Installation et démarrage
-- Configuration (environnements, OAuth)
-- Tests et CI
-- Scripts disponibles
-- Documentation technique
+## Table of Contents
+- Overview and structure
+- Installation and start
+- Configuration (environments, OAuth)
+- Tests and CI
+- Available scripts
+- Architecture and docs
 
-## Structure du dépôt
+## Repository Structure
 ```
 EpiTrello2.0/
-├── frontend/                  # Application Angular
-│   ├── src/                   # Code source
+├── frontend/                  # Angular application
+│   ├── src/                   # Source code
 │   ├── angular.json
 │   ├── karma.conf.js
 │   ├── package.json
-│   └── ARCHITECTURE.md        # Doc d’architecture frontend
-├── backend/                   # API Express
-│   ├── src/                   # Code source
+│   └── ARCHITECTURE.md        # Frontend architecture doc
+├── backend/                   # Express API
+│   ├── src/                   # Source code
 │   ├── package.json
-│   └── ARCHITECTURE.md        # Doc d’architecture backend
+│   └── ARCHITECTURE.md        # Backend architecture doc
 └── .github/workflows/
-    └── frontend-tests.yml     # CI tests frontend
+    └── frontend-tests.yml     # Frontend tests CI
 ```
 
-## Installation et démarrage
+## Installation and Start
 
 ### Frontend (Angular)
 ```bash
@@ -39,7 +39,7 @@ npm install
 npm run start
 # http://localhost:4200/
 ```
-- Build production:
+- Production build:
 ```bash
 npm run build
 ```
@@ -48,8 +48,8 @@ npm run build
 npm run build
 npm run serve:ssr:EpiTrello
 ```
-- Configuration API:
-  - Modifier `src/environments/environment.development.ts` pour pointer vers l’API:
+- API configuration:
+  - Edit `src/environments/environment.development.ts` to point to your API:
     ```ts
     export const environment = {
       production: false,
@@ -62,7 +62,7 @@ npm run serve:ssr:EpiTrello
 cd backend
 npm install
 ```
-- Fichier `.env` à créer dans `backend/`:
+Create `.env` in `backend/`:
 ```
 PORT=5000
 DATABASE_URL=mongodb://localhost:27017/epitrello
@@ -73,33 +73,33 @@ FRONTEND_LOGIN_URL=http://localhost:4200/login
 FRONTEND_GOOGLE_URL=http://localhost:4200/
 NODE_ENV=development
 ```
-- Démarrer en développement:
+- Start in development:
 ```bash
 npm start
 # http://localhost:5000
 ```
-- Build et start production:
+- Build and start in production:
 ```bash
 npm run build
 npm run start-build
 ```
 
-## Authentification et OAuth
-- Auth locale (nom + mot de passe) et Google OAuth 2.0
-- Frontend déclenche le flow Google via l’endpoint backend:
+## Authentication and OAuth
+- Local auth (name + password) and Google OAuth 2.0
+- Frontend triggers Google flow via backend endpoint:
   - GET `/api/auth/google`
-- S’assurer que `FRONTEND_*_URL` dans le backend correspond au domaine du frontend
+- Ensure `FRONTEND_*_URL` in backend matches your frontend domain
 
-## Tests et CI
+## Tests and CI
 
 ### Frontend
-- Tests unitaires/intégration avec Karma + Jasmine
-- Brave/Chrome Headless configuré via `karma.conf.js`
-- Lancer les tests en local:
+- Unit/integration tests with Karma + Jasmine
+- Brave/Chrome Headless configured via `karma.conf.js`
+- Run tests locally:
 ```bash
 cd frontend
 npm run test -- --watch=false
-# Mode headless:
+# Headless mode:
 # PowerShell:
 $env:KARMA_HEADLESS="true"; npm run test -- --watch=false
 # CMD:
@@ -108,9 +108,9 @@ set KARMA_HEADLESS=true && npm run test -- --watch=false
 
 ### CI GitHub Actions
 - Workflow: `.github/workflows/frontend-tests.yml`
-- Installe Chrome et exporte `CHROME_BIN`; exécute `npm ci` puis `npm run test -- --watch=false`
+- Installs Chrome and exports `CHROME_BIN`; runs `npm ci` then `npm run test -- --watch=false`
 
-## Scripts disponibles
+## Available Scripts
 
 ### Frontend
 ```json
@@ -132,11 +132,11 @@ set KARMA_HEADLESS=true && npm run test -- --watch=false
 }
 ```
 
-## Architecture et documentation
+## Architecture and Documentation
 - Frontend: [frontend/ARCHITECTURE.md](frontend/ARCHITECTURE.md)
 - Backend: [backend/ARCHITECTURE.md](backend/ARCHITECTURE.md)
 
  
 
-## Licence
-Ce projet est destiné à un usage pédagogique. Ajoutez une licence si nécessaire.
+## License
+This project is intended for educational use. Add a license if needed.
